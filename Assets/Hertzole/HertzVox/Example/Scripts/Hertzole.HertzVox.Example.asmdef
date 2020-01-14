@@ -1,0 +1,16 @@
+{
+    "name": "Hertzole.HertzVox.Example",
+    "references": [
+        "GUID:b718d860e8622ff4c987394aaaf29c00",
+        "GUID:d8b63aba1907145bea998dd612889d6b"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

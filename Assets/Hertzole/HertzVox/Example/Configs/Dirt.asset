@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ec891278869ee5b4fab15be5fbaa53c2, type: 3}
+  m_Name: Dirt
+  m_EditorClassIdentifier: 
+  blockName: Dirt
+  blockID: dirt
+  solid: 1
+  topTexture: {fileID: 2800000, guid: 5a4dee2d77df1ab4d8e66185aec9c5a1, type: 3}
+  bottomTexture: {fileID: 2800000, guid: 5a4dee2d77df1ab4d8e66185aec9c5a1, type: 3}
+  northTexture: {fileID: 2800000, guid: 5a4dee2d77df1ab4d8e66185aec9c5a1, type: 3}
+  southTexture: {fileID: 2800000, guid: 5a4dee2d77df1ab4d8e66185aec9c5a1, type: 3}
+  westTexture: {fileID: 2800000, guid: 5a4dee2d77df1ab4d8e66185aec9c5a1, type: 3}
+  eastTexture: {fileID: 2800000, guid: 5a4dee2d77df1ab4d8e66185aec9c5a1, type: 3}
+  topTextureId: 1
+  bottomTextureId: 1
+  northTextureId: -1
+  southTextureId: 1
+  westTextureId: 1
+  eastTextureId: 1
