@@ -4,16 +4,32 @@ using UnityEngine;
 
 namespace Hertzole.HertzVox
 {
+    [DefaultExecutionOrder(-50)]
     public class VoxelWorld : MonoBehaviour
     {
         [SerializeField]
         private BlockCollection blockCollection = null;
         [SerializeField]
         private Material chunkMaterial = null;
+        [SerializeField]
+        private float chunkGenerateDelay = 0.25f;
+
+        private float nextChunkGenerate;
+
+        private Block stone;
+        private Block dirt;
+        private Block grass;
+
+        private Vector3Int lastLoaderPosition;
 
         private Material mat;
 
-        private Dictionary<int3, Chunk> chunks = new Dictionary<int3, Chunk>();
+        private VoxelLoader loader;
+
+        //private Dictionary<int3, Chunk> chunks = new Dictionary<int3, Chunk>();
+        private List<Chunk> renderChunks = new List<Chunk>();
+        private List<Chunk> chunks = new List<Chunk>();
+        private Dictionary<int3, Chunk> chunkPositions = new Dictionary<int3, Chunk>();
 
         public static VoxelWorld Main { get; private set; }
 
@@ -25,16 +41,22 @@ namespace Hertzole.HertzVox
         }
 #endif
 
-        private void Awake()
+        private void OnEnable()
         {
-            if (Main != null)
+            if (Main != null && Main != this)
             {
                 Debug.LogError("Multiple Voxel Worlds! There can only be one.", gameObject);
                 return;
             }
 
-            Main = this;
+            if (Main == null)
+            {
+                Main = this;
+            }
+        }
 
+        private void Awake()
+        {
             BlockProvider.Initialize(blockCollection);
             TextureProvider.Initialize(blockCollection);
 
@@ -51,60 +73,10 @@ namespace Hertzole.HertzVox
             mat.SetInt("_AtlasX", xSize);
             mat.SetInt("_AtlasY", ySize);
             mat.SetVector("_AtlasRec", new Vector4(1.0f / xSize, 1.0f / ySize));
-        }
 
-        private void Start()
-        {
-            Chunk chunk = new Chunk
-            {
-                position = int3.zero
-            };
-
-            ChunkBlocks blocks = new ChunkBlocks
-            {
-                blocks = new Unity.Collections.NativeArray<Block>(16 * 16 * 16, Unity.Collections.Allocator.Persistent)
-            };
-
-            int index = 0;
-
-            for (int x = 0; x < Chunk.CHUNK_SIZE; x++)
-            {
-                for (int y = 0; y < Chunk.CHUNK_SIZE; y++)
-                {
-                    for (int z = 0; z < Chunk.CHUNK_SIZE; z++)
-                    {
-                        if (y < 4)
-                        {
-                            if (BlockProvider.TryGetBlock("stone", out Block stone))
-                            {
-                                blocks.blocks[index] = stone;
-                            }
-                        }
-                        else if (y >= 4 && y < 6)
-                        {
-                            if (BlockProvider.TryGetBlock("dirt", out Block dirt))
-                            {
-                                blocks.blocks[index] = dirt;
-                            }
-                        }
-                        else if (y == 6)
-                        {
-                            if (BlockProvider.TryGetBlock("grass", out Block grass))
-                            {
-                                blocks.blocks[index] = grass;
-                            }
-                        }
-
-                        index++;
-                    }
-                }
-            }
-
-            chunk.blocks = blocks;
-
-            chunk.UpdateChunk();
-
-            chunks.Add(int3.zero, chunk);
+            stone = BlockProvider.GetBlock("stone");
+            dirt = BlockProvider.GetBlock("dirt");
+            grass = BlockProvider.GetBlock("grass");
         }
 
         private void OnDestroy()
@@ -121,23 +93,24 @@ namespace Hertzole.HertzVox
 
         private void Update()
         {
-            for (int i = 0; i < chunks.Count; i++)
+            for (int i = 0; i < renderChunks.Count; i++)
             {
-                chunks[i].Draw(mat);
-                chunks[i].Update();
+                renderChunks[i].Draw(mat);
+                renderChunks[i].Update();
             }
 
-            if (Input.GetKeyDown(KeyCode.Space))
+            if (Time.unscaledTime >= nextChunkGenerate)
             {
-                Debug.Log(GetBlock(new int3(0, 6, 0)).id);
+                nextChunkGenerate = Time.unscaledTime + chunkGenerateDelay;
+                GenerateChunksAroundTargets();
             }
         }
 
         private void LateUpdate()
         {
-            for (int i = 0; i < chunks.Count; i++)
+            for (int i = 0; i < renderChunks.Count; i++)
             {
-                chunks[i].LateUpdate();
+                renderChunks[i].LateUpdate();
             }
         }
 
@@ -151,7 +124,11 @@ namespace Hertzole.HertzVox
                 return BlockProvider.GetBlock("air");
             }
 
-            return chunk.blocks.Get(position);
+            int xx = Helpers.Mod(position.x, Chunk.CHUNK_SIZE);
+            int yy = Helpers.Mod(position.y, Chunk.CHUNK_SIZE);
+            int zz = Helpers.Mod(position.z, Chunk.CHUNK_SIZE);
+
+            return chunk.blocks.Get(xx, yy, zz);
         }
 
         public void SetBlock(int3 position, Block block)
@@ -161,7 +138,11 @@ namespace Hertzole.HertzVox
             Chunk chunk = GetChunk(chunkPos);
             if (chunk != null)
             {
-                chunk.SetBlock(position, block);
+                int xx = Helpers.Mod(position.x, Chunk.CHUNK_SIZE);
+                int yy = Helpers.Mod(position.y, Chunk.CHUNK_SIZE);
+                int zz = Helpers.Mod(position.z, Chunk.CHUNK_SIZE);
+
+                chunk.SetBlock(xx, yy, zz, block);
                 chunk.UpdateChunk();
             }
         }
@@ -170,8 +151,97 @@ namespace Hertzole.HertzVox
         {
             //Assert.IsTrue(Helpers.ContainingChunkPosition(ref position).Equals(position));
 
-            chunks.TryGetValue(position, out Chunk chunk);
+            chunkPositions.TryGetValue(position, out Chunk chunk);
             return chunk;
+        }
+
+        private void GenerateChunksAroundTargets()
+        {
+            if (loader == null)
+            {
+                return;
+            }
+
+            Vector3Int targetPosition = Helpers.WorldToChunk(loader.transform.position, Chunk.CHUNK_SIZE);
+            if (lastLoaderPosition == targetPosition)
+            {
+                return;
+            }
+
+            lastLoaderPosition = targetPosition;
+
+            renderChunks.Clear();
+
+            Chunk chunk = null;
+
+            for (int x = -5 + targetPosition.x; x < 5 + targetPosition.x; x++)
+            {
+                for (int z = -5 + targetPosition.z; z < 5 + targetPosition.z; z++)
+                {
+                    int3 chunkPosition = new int3(x * Chunk.CHUNK_SIZE, 0, z * Chunk.CHUNK_SIZE);
+                    if (chunkPositions.TryGetValue(chunkPosition, out chunk))
+                    {
+                        renderChunks.Add(chunk);
+                    }
+                    else
+                    {
+                        chunk = CreateChunk(chunkPosition);
+                        chunks.Add(chunk);
+                        renderChunks.Add(chunk);
+                        chunkPositions.Add(chunkPosition, chunk);
+                    }
+                }
+            }
+        }
+
+        private Chunk CreateChunk(int3 position)
+        {
+            Chunk chunk = new Chunk(this, position);
+            ChunkBlocks blocks = new ChunkBlocks
+            {
+                blocks = new Unity.Collections.NativeArray<Block>(16 * 16 * 16, Unity.Collections.Allocator.Persistent)
+            };
+
+            int index = 0;
+
+            for (int x = 0; x < Chunk.CHUNK_SIZE; x++)
+            {
+                for (int y = 0; y < Chunk.CHUNK_SIZE; y++)
+                {
+                    for (int z = 0; z < Chunk.CHUNK_SIZE; z++)
+                    {
+                        if (y < 4)
+                        {
+                            blocks.blocks[index] = stone;
+                        }
+                        else if (y >= 4 && y < 6)
+                        {
+                            blocks.blocks[index] = dirt;
+                        }
+                        else if (y == 6)
+                        {
+                            blocks.blocks[index] = grass;
+                        }
+
+                        index++;
+                    }
+                }
+            }
+
+            chunk.blocks = blocks;
+
+            chunk.UpdateChunk();
+            return chunk;
+        }
+
+        public void RegisterLoader(VoxelLoader loader)
+        {
+            this.loader = loader;
+        }
+
+        public void UnregisterLoader(VoxelLoader loader)
+        {
+            this.loader = null;
         }
     }
 }

@@ -16,10 +16,17 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 70a92f89230ec584ebb6a998f7171fc0, type: 2}
   - {fileID: 11400000, guid: 2e986818530972043bba92ad082204ec, type: 2}
   - {fileID: 11400000, guid: 68305025e7b1bec40bef409fd5ae97b3, type: 2}
+  - {fileID: 11400000, guid: 13698ec5600ef944e8e95b78132307ad, type: 2}
+  - {fileID: 11400000, guid: badd2812fba75604b8226882e881c5e9, type: 2}
+  - {fileID: 11400000, guid: c8bc58c07a7fd714d9ce42b371fa98d0, type: 2}
   textureSize: 8
   uniqueTextures:
   - {fileID: 2800000, guid: bbe1ee11856a03b43ad66013fd6ce8de, type: 3}
   - {fileID: 2800000, guid: 5a4dee2d77df1ab4d8e66185aec9c5a1, type: 3}
   - {fileID: 2800000, guid: d41001e157a3cd64b927ca3860271a01, type: 3}
   - {fileID: 2800000, guid: 024b56783965a48459bed48a7cd369cc, type: 3}
-  uniqueTextureIds: 00000000010000000200000003000000
+  - {fileID: 2800000, guid: d69622076db2a8b4d83497ad9526c735, type: 3}
+  - {fileID: 2800000, guid: d67b4972488cc55489e4529cf34a4d49, type: 3}
+  - {fileID: 2800000, guid: 3579394ffadf3944da95721d9fc1c364, type: 3}
+  - {fileID: 2800000, guid: 24d6fe198ce1b6e4db4212a375510617, type: 3}
+  uniqueTextureIds: 0000000001000000020000000300000004000000050000000600000007000000

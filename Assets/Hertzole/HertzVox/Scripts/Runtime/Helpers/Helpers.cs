@@ -17,9 +17,27 @@ namespace Hertzole.HertzVox
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int GetIndex1DFrom2D(int x, int z, int sizeX)
+        {
+            return x + z * sizeX;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int GetIndex1DFrom3D(int x, int y, int z, int size)
         {
             return x * size * size + y * size + z;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int Mod(int value, int modulus)
+        {
+            int r = value % modulus;
+            return (r < 0) ? (r + modulus) : r;
+        }
+
+        public static Vector3Int WorldToChunk(Vector3 worldPosition, int chunkSize)
+        {
+            return new Vector3Int(Mathf.FloorToInt(worldPosition.x / chunkSize), Mathf.FloorToInt(worldPosition.y / chunkSize), Mathf.FloorToInt(worldPosition.z / chunkSize));
         }
     }
 }

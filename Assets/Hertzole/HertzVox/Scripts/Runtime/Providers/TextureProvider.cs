@@ -56,7 +56,7 @@ namespace Hertzole.HertzVox
 
             textures = new NativeHashMap<int, int2>(0, Allocator.Persistent);
 
-            atlasTexture = new Texture2D(8192, 8192);
+            atlasTexture = new Texture2D(8192, 8192, TextureFormat.ARGB32, 0, false);
             rects = atlasTexture.PackTextures(uniqueTextures, 0, 8192, false);
             atlasTexture.filterMode = FilterMode.Point;
 

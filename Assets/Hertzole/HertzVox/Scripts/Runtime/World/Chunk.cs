@@ -25,7 +25,15 @@ namespace Hertzole.HertzVox
 
         private Mesh mesh;
 
+        private VoxelWorld world;
+
         public const int CHUNK_SIZE = 16;
+
+        public Chunk(VoxelWorld world, int3 position)
+        {
+            this.world = world;
+            this.position = position;
+        }
 
         public void Draw(Material chunkMaterial)
         {
