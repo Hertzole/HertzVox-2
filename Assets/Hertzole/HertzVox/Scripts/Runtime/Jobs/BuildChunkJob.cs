@@ -13,7 +13,7 @@ namespace Hertzole.HertzVox
         [ReadOnly]
         public int size;
         [ReadOnly]
-        public ChunkBlocks blocks;
+        public NativeArray<Block> blocks;
         [ReadOnly]
         public NativeHashMap<int, int2> textures;
 
@@ -36,14 +36,14 @@ namespace Hertzole.HertzVox
                 {
                     for (int z = 0; z < size; z++)
                     {
-                        if (blocks.blocks[index].id == 0) // Is air
+                        if (blocks[index].id == 0) // Is air
                         {
                             faces[index] = 0;
                             index++;
                             continue;
                         }
 
-                        Block currentBlock = blocks.blocks[index];
+                        Block currentBlock = blocks[index];
 
                         // South
                         if (z == 0)
@@ -51,7 +51,7 @@ namespace Hertzole.HertzVox
                             faces[index] |= (byte)Direction.South;
                             sizeEstimate += 4;
                         }
-                        else if (z > 0 && IsTransparent(blocks.blocks[index - 1], currentBlock))
+                        else if (z > 0 && IsTransparent(blocks[index - 1], currentBlock))
                         {
                             faces[index] |= (byte)Direction.South;
                             sizeEstimate += 4;
@@ -63,7 +63,7 @@ namespace Hertzole.HertzVox
                             faces[index] |= (byte)Direction.North;
                             sizeEstimate += 4;
                         }
-                        else if (z < size - 1 && IsTransparent(blocks.blocks[index + 1], currentBlock))
+                        else if (z < size - 1 && IsTransparent(blocks[index + 1], currentBlock))
                         {
                             faces[index] |= (byte)Direction.North;
                             sizeEstimate += 4;
@@ -75,7 +75,7 @@ namespace Hertzole.HertzVox
                             faces[index] |= (byte)Direction.West;
                             sizeEstimate += 4;
                         }
-                        else if (x > 0 && IsTransparent(blocks.blocks[index - size * size], currentBlock))
+                        else if (x > 0 && IsTransparent(blocks[index - size * size], currentBlock))
                         {
                             faces[index] |= (byte)Direction.West;
                             sizeEstimate += 4;
@@ -87,7 +87,7 @@ namespace Hertzole.HertzVox
                             faces[index] |= (byte)Direction.East;
                             sizeEstimate += 4;
                         }
-                        else if (x < size - 1 && IsTransparent(blocks.blocks[index + size * size], currentBlock))
+                        else if (x < size - 1 && IsTransparent(blocks[index + size * size], currentBlock))
                         {
                             faces[index] |= (byte)Direction.East;
                             sizeEstimate += 4;
@@ -99,7 +99,7 @@ namespace Hertzole.HertzVox
                             faces[index] |= (byte)Direction.Down;
                             sizeEstimate += 4;
                         }
-                        else if (y > 0 && IsTransparent(blocks.blocks[index - size], currentBlock))
+                        else if (y > 0 && IsTransparent(blocks[index - size], currentBlock))
                         {
                             faces[index] |= (byte)Direction.Down;
                             sizeEstimate += 4;
@@ -111,7 +111,7 @@ namespace Hertzole.HertzVox
                             faces[index] |= (byte)Direction.Up;
                             sizeEstimate += 4;
                         }
-                        else if (y < size - 1 && IsTransparent(blocks.blocks[index + size], currentBlock))
+                        else if (y < size - 1 && IsTransparent(blocks[index + size], currentBlock))
                         {
                             faces[index] |= (byte)Direction.Up;
                             sizeEstimate += 4;
@@ -160,7 +160,7 @@ namespace Hertzole.HertzVox
                             vertices[vertexIndex + 2] = new float3(x + position.x, y + position.y + 1, z + position.z + 1);
                             vertices[vertexIndex + 3] = new float3(x + position.x + 1, y + position.y + 1, z + position.z + 1);
 
-                            int2 northTexture = textures[blocks.blocks[index].northTexture];
+                            int2 northTexture = textures[blocks[index].northTexture];
 
                             uvs[vertexIndex] = new float4(0, 0, northTexture.x, northTexture.y);
                             uvs[vertexIndex + 1] = new float4(1, 0, northTexture.x, northTexture.y);
@@ -186,7 +186,7 @@ namespace Hertzole.HertzVox
                             vertices[vertexIndex + 2] = new float3(x + position.x + 1, y + position.y + 1, z + position.z);
                             vertices[vertexIndex + 3] = new float3(x + position.x + 1, y + position.y + 1, z + position.z + 1);
 
-                            int2 eastTexture = textures[blocks.blocks[index].eastTexture];
+                            int2 eastTexture = textures[blocks[index].eastTexture];
 
                             uvs[vertexIndex] = new float4(0, 0, eastTexture.x, eastTexture.y);
                             uvs[vertexIndex + 1] = new float4(1, 0, eastTexture.x, eastTexture.y);
@@ -212,7 +212,7 @@ namespace Hertzole.HertzVox
                             vertices[vertexIndex + 2] = new float3(x + position.x, y + position.y + 1, z + position.z);
                             vertices[vertexIndex + 3] = new float3(x + position.x + 1, y + position.y + 1, z + position.z);
 
-                            int2 southTexture = textures[blocks.blocks[index].southTexture];
+                            int2 southTexture = textures[blocks[index].southTexture];
 
                             uvs[vertexIndex] = new float4(0, 0, southTexture.x, southTexture.y);
                             uvs[vertexIndex + 1] = new float4(1, 0, southTexture.x, southTexture.y);
@@ -238,7 +238,7 @@ namespace Hertzole.HertzVox
                             vertices[vertexIndex + 2] = new float3(x + position.x, y + position.y, z + position.z + 1);
                             vertices[vertexIndex + 3] = new float3(x + position.x, y + position.y + 1, z + position.z + 1);
 
-                            int2 westTexture = textures[blocks.blocks[index].westTexture];
+                            int2 westTexture = textures[blocks[index].westTexture];
 
                             uvs[vertexIndex] = new float4(0, 0, westTexture.x, westTexture.y);
                             uvs[vertexIndex + 1] = new float4(0, 1, westTexture.x, westTexture.y);
@@ -264,7 +264,7 @@ namespace Hertzole.HertzVox
                             vertices[vertexIndex + 2] = new float3(x + position.x, y + position.y + 1, z + position.z + 1);
                             vertices[vertexIndex + 3] = new float3(x + position.x + 1, y + position.y + 1, z + position.z + 1);
 
-                            int2 topTexture = textures[blocks.blocks[index].topTexture];
+                            int2 topTexture = textures[blocks[index].topTexture];
 
                             uvs[vertexIndex] = new float4(0, 0, topTexture.x, topTexture.y);
                             uvs[vertexIndex + 1] = new float4(1, 0, topTexture.x, topTexture.y);
@@ -290,7 +290,7 @@ namespace Hertzole.HertzVox
                             vertices[vertexIndex + 2] = new float3(x + position.x + 1, y + position.y, z + position.z);
                             vertices[vertexIndex + 3] = new float3(x + position.x + 1, y + position.y, z + position.z + 1);
 
-                            int2 bottomTexture = textures[blocks.blocks[index].bottomTexture];
+                            int2 bottomTexture = textures[blocks[index].bottomTexture];
 
                             uvs[vertexIndex] = new float4(0, 0, bottomTexture.x, bottomTexture.y);
                             uvs[vertexIndex + 1] = new float4(1, 0, bottomTexture.x, bottomTexture.y);

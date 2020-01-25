@@ -106,7 +106,7 @@ namespace Hertzole.HertzVox
             {
                 size = CHUNK_SIZE,
                 position = position,
-                blocks = blocks,
+                blocks = blocks.blocks,
                 textures = TextureProvider.GetTextureMap(),
                 vertices = vertices,
                 indicies = indicies,
@@ -191,6 +191,21 @@ namespace Hertzole.HertzVox
         public void SetBlockRaw(int3 position, Block block)
         {
             SetBlockRaw(position.x, position.y, position.z, block);
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (obj != null && obj is Chunk chunk && position.x == chunk.position.x && position.y == chunk.position.y)
+            {
+                return chunk.position.z == position.z;
+            }
+
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            return position.GetHashCode() * 17;
         }
     }
 }

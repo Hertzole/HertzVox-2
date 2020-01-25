@@ -13,6 +13,8 @@ namespace Hertzole.HertzVox
         private Material chunkMaterial = null;
         [SerializeField]
         private float chunkGenerateDelay = 0.25f;
+        [SerializeField]
+        private bool clearTempOnDestroy = true;
 
         private float nextChunkGenerate;
 
@@ -31,6 +33,8 @@ namespace Hertzole.HertzVox
         private VoxelLoader loader;
 
         private List<Chunk> renderChunks = new List<Chunk>();
+        private List<int3> chunksToRemove = new List<int3>();
+
         private Dictionary<int3, Chunk> chunks = new Dictionary<int3, Chunk>();
 
         public static VoxelWorld Main { get; private set; }
@@ -96,6 +100,11 @@ namespace Hertzole.HertzVox
             TextureProvider.Dispose();
 
             Destroy(mat);
+
+            if (clearTempOnDestroy)
+            {
+                Serialization.ClearTemp();
+            }
         }
 
         private void Update()
@@ -177,54 +186,46 @@ namespace Hertzole.HertzVox
 
             renderChunks.Clear();
 
-            //TODO: Improve the way chunk loading is done.
-
-            List<int3> toRemove = new List<int3>();
-
-            int index = 0;
-
-            foreach (KeyValuePair<int3, Chunk> chunk in chunks)
-            {
-                float distance = math.distance(chunk.Key / Chunk.CHUNK_SIZE, targetPosition);
-                if (distance > 10)
-                {
-                    toRemove.Add(chunk.Key);
-                }
-
-                index++;
-            }
-
-            for (int i = 0; i < toRemove.Count; i++)
-            {
-                if (chunks.TryGetValue(toRemove[i], out Chunk chunk))
-                {
-                    if (chunk.changed)
-                    {
-                        Serialization.SaveChunk(chunk, true);
-                    }
-                    chunk.Dispose();
-                    chunks.Remove(toRemove[i]);
-                }
-            }
-
             for (int x = -10 + targetPosition.x; x < 10 + targetPosition.x; x++)
             {
                 for (int z = -10 + targetPosition.z; z < 10 + targetPosition.z; z++)
                 {
                     int3 chunkPosition = new int3(x * Chunk.CHUNK_SIZE, 0, z * Chunk.CHUNK_SIZE);
 
-                    if (chunks.TryGetValue(chunkPosition, out Chunk chunk))
+                    if (chunks.TryGetValue(chunkPosition, out Chunk myChunk))
                     {
-                        renderChunks.Add(chunk);
-                        chunk.UpdateChunkIfNeeded();
+                        renderChunks.Add(myChunk);
                     }
                     else
                     {
-                        chunk = CreateChunk(chunkPosition);
-                        renderChunks.Add(chunk);
-                        chunks.Add(chunkPosition, chunk);
-                        Serialization.LoadChunk(chunk, true);
+                        myChunk = CreateChunk(chunkPosition);
+                        renderChunks.Add(myChunk);
+                        chunks.Add(chunkPosition, myChunk);
+                        Serialization.LoadChunk(myChunk, true);
                     }
+                }
+            }
+
+            chunksToRemove.Clear();
+            foreach (KeyValuePair<int3, Chunk> chunk in chunks)
+            {
+                if (!renderChunks.Contains(chunk.Value))
+                {
+                    chunksToRemove.Add(chunk.Key);
+                }
+            }
+
+            //TODO: Pool chunks in memory pool.
+            for (int i = 0; i < chunksToRemove.Count; i++)
+            {
+                if (chunks.TryGetValue(chunksToRemove[i], out Chunk chunk))
+                {
+                    if (chunk.changed)
+                    {
+                        Serialization.SaveChunk(chunk, true);
+                    }
+                    chunk.Dispose();
+                    chunks.Remove(chunksToRemove[i]);
                 }
             }
         }

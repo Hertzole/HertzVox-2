@@ -104,6 +104,15 @@ namespace Hertzole.HertzVox
 			}
 		}
 
+		public static void ClearTemp()
+		{
+			string[] files = Directory.GetFiles(TempSaveLocation, "*.bin");
+			for (int i = 0; i < files.Length; i++)
+			{
+				File.Delete(files[i]);
+			}
+		}
+
 		private static void MakeSureSaveLocationExists()
 		{
 			if (!Directory.Exists(SaveLocation))
