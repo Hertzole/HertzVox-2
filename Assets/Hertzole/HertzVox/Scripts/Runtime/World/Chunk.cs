@@ -14,6 +14,7 @@ namespace Hertzole.HertzVox
         private bool dirty;
         private bool updatingMesh;
         private bool urgentUpdate;
+        public bool changed;
 
         private int frameCount;
 
@@ -25,13 +26,10 @@ namespace Hertzole.HertzVox
 
         private Mesh mesh;
 
-        private VoxelWorld world;
-
         public const int CHUNK_SIZE = 16;
 
-        public Chunk(VoxelWorld world, int3 position)
+        public Chunk(int3 position)
         {
-            this.world = world;
             this.position = position;
         }
 
@@ -63,10 +61,13 @@ namespace Hertzole.HertzVox
                 return;
             }
 
-            if (job.IsCompleted || urgentUpdate || frameCount >= 4)
+            if (job.IsCompleted || frameCount >= 4)
             {
-                job.Complete();
-                OnMeshUpdated();
+                if (!urgentUpdate)
+                {
+                    job.Complete();
+                    OnMeshUpdated();
+                }
             }
         }
 
@@ -74,6 +75,14 @@ namespace Hertzole.HertzVox
         {
             urgentUpdate = urgent;
             dirty = true;
+        }
+
+        public void UpdateChunkIfNeeded()
+        {
+            if (mesh == null)
+            {
+                UpdateChunk(false);
+            }
         }
 
         private void UpdateMesh()
@@ -93,7 +102,7 @@ namespace Hertzole.HertzVox
             indicies = new NativeList<int>(Allocator.TempJob);
             uvs = new NativeList<float4>(Allocator.TempJob);
 
-            job = new BuildChunkJob()
+            BuildChunkJob job = new BuildChunkJob()
             {
                 size = CHUNK_SIZE,
                 position = position,
@@ -102,7 +111,17 @@ namespace Hertzole.HertzVox
                 vertices = vertices,
                 indicies = indicies,
                 uvs = uvs
-            }.Schedule();
+            };
+
+            if (urgentUpdate)
+            {
+                job.Run();
+                OnMeshUpdated();
+            }
+            else
+            {
+                this.job = job.Schedule();
+            }
         }
 
         private void OnMeshUpdated()
@@ -128,6 +147,13 @@ namespace Hertzole.HertzVox
 
         public void Dispose()
         {
+            if (mesh != null)
+            {
+                UnityEngine.Object.Destroy(mesh);
+            }
+
+            mesh = null;
+
             blocks.Dispose();
             if (vertices.IsCreated)
             {
@@ -147,7 +173,7 @@ namespace Hertzole.HertzVox
 
         public void SetBlock(int x, int y, int z, Block block, bool urgent = true)
         {
-            blocks.Set(x, y, z, block);
+            SetBlockRaw(x, y, z, block);
             UpdateChunk(urgent);
         }
 
@@ -158,6 +184,7 @@ namespace Hertzole.HertzVox
 
         public void SetBlockRaw(int x, int y, int z, Block block)
         {
+            changed = true;
             blocks.Set(x, y, z, block);
         }
 

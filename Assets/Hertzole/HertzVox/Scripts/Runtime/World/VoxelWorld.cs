@@ -19,17 +19,19 @@ namespace Hertzole.HertzVox
         private Block stone;
         private Block dirt;
         private Block grass;
+        private Block air;
+        private Block logs;
+        private Block planks;
+        private Block leaves;
 
-        private Vector3Int lastLoaderPosition;
+        private int3 lastLoaderPosition;
 
         private Material mat;
 
         private VoxelLoader loader;
 
-        //private Dictionary<int3, Chunk> chunks = new Dictionary<int3, Chunk>();
         private List<Chunk> renderChunks = new List<Chunk>();
-        private List<Chunk> chunks = new List<Chunk>();
-        private Dictionary<int3, Chunk> chunkPositions = new Dictionary<int3, Chunk>();
+        private Dictionary<int3, Chunk> chunks = new Dictionary<int3, Chunk>();
 
         public static VoxelWorld Main { get; private set; }
 
@@ -59,6 +61,7 @@ namespace Hertzole.HertzVox
         {
             BlockProvider.Initialize(blockCollection);
             TextureProvider.Initialize(blockCollection);
+            Serialization.Initialize(Application.persistentDataPath + "/HertzVox/");
 
             Texture2D atlas = TextureProvider.GetAtlas();
 
@@ -77,13 +80,17 @@ namespace Hertzole.HertzVox
             stone = BlockProvider.GetBlock("stone");
             dirt = BlockProvider.GetBlock("dirt");
             grass = BlockProvider.GetBlock("grass");
+            air = BlockProvider.GetBlock("air");
+            logs = BlockProvider.GetBlock("log");
+            planks = BlockProvider.GetBlock("planks");
+            leaves = BlockProvider.GetBlock("leaves");
         }
 
         private void OnDestroy()
         {
-            for (int i = 0; i < chunks.Count; i++)
+            foreach (Chunk chunk in chunks.Values)
             {
-                chunks[i].Dispose();
+                chunk.Dispose();
             }
 
             TextureProvider.Dispose();
@@ -118,25 +125,23 @@ namespace Hertzole.HertzVox
         {
             int3 chunkPos = Helpers.ContainingChunkPosition(position);
 
-            Chunk chunk = GetChunk(chunkPos);
-            if (chunk == null)
+            if (chunks.TryGetValue(chunkPos, out Chunk chunk))
             {
-                return BlockProvider.GetBlock("air");
+                int xx = Helpers.Mod(position.x, Chunk.CHUNK_SIZE);
+                int yy = Helpers.Mod(position.y, Chunk.CHUNK_SIZE);
+                int zz = Helpers.Mod(position.z, Chunk.CHUNK_SIZE);
+
+                return chunk.blocks.Get(xx, yy, zz);
             }
 
-            int xx = Helpers.Mod(position.x, Chunk.CHUNK_SIZE);
-            int yy = Helpers.Mod(position.y, Chunk.CHUNK_SIZE);
-            int zz = Helpers.Mod(position.z, Chunk.CHUNK_SIZE);
-
-            return chunk.blocks.Get(xx, yy, zz);
+            return BlockProvider.GetBlock("air");
         }
 
         public void SetBlock(int3 position, Block block)
         {
             int3 chunkPos = Helpers.ContainingChunkPosition(position);
 
-            Chunk chunk = GetChunk(chunkPos);
-            if (chunk != null)
+            if (chunks.TryGetValue(chunkPos, out Chunk chunk))
             {
                 int xx = Helpers.Mod(position.x, Chunk.CHUNK_SIZE);
                 int yy = Helpers.Mod(position.y, Chunk.CHUNK_SIZE);
@@ -151,7 +156,7 @@ namespace Hertzole.HertzVox
         {
             //Assert.IsTrue(Helpers.ContainingChunkPosition(ref position).Equals(position));
 
-            chunkPositions.TryGetValue(position, out Chunk chunk);
+            chunks.TryGetValue(position, out Chunk chunk);
             return chunk;
         }
 
@@ -162,8 +167,8 @@ namespace Hertzole.HertzVox
                 return;
             }
 
-            Vector3Int targetPosition = Helpers.WorldToChunk(loader.transform.position, Chunk.CHUNK_SIZE);
-            if (lastLoaderPosition == targetPosition)
+            int3 targetPosition = Helpers.WorldToChunk(loader.transform.position, Chunk.CHUNK_SIZE);
+            if (lastLoaderPosition.Equals(targetPosition))
             {
                 return;
             }
@@ -172,23 +177,53 @@ namespace Hertzole.HertzVox
 
             renderChunks.Clear();
 
-            Chunk chunk = null;
+            //TODO: Improve the way chunk loading is done.
 
-            for (int x = -5 + targetPosition.x; x < 5 + targetPosition.x; x++)
+            List<int3> toRemove = new List<int3>();
+
+            int index = 0;
+
+            foreach (KeyValuePair<int3, Chunk> chunk in chunks)
             {
-                for (int z = -5 + targetPosition.z; z < 5 + targetPosition.z; z++)
+                float distance = math.distance(chunk.Key / Chunk.CHUNK_SIZE, targetPosition);
+                if (distance > 10)
+                {
+                    toRemove.Add(chunk.Key);
+                }
+
+                index++;
+            }
+
+            for (int i = 0; i < toRemove.Count; i++)
+            {
+                if (chunks.TryGetValue(toRemove[i], out Chunk chunk))
+                {
+                    if (chunk.changed)
+                    {
+                        Serialization.SaveChunk(chunk, true);
+                    }
+                    chunk.Dispose();
+                    chunks.Remove(toRemove[i]);
+                }
+            }
+
+            for (int x = -10 + targetPosition.x; x < 10 + targetPosition.x; x++)
+            {
+                for (int z = -10 + targetPosition.z; z < 10 + targetPosition.z; z++)
                 {
                     int3 chunkPosition = new int3(x * Chunk.CHUNK_SIZE, 0, z * Chunk.CHUNK_SIZE);
-                    if (chunkPositions.TryGetValue(chunkPosition, out chunk))
+
+                    if (chunks.TryGetValue(chunkPosition, out Chunk chunk))
                     {
                         renderChunks.Add(chunk);
+                        chunk.UpdateChunkIfNeeded();
                     }
                     else
                     {
                         chunk = CreateChunk(chunkPosition);
-                        chunks.Add(chunk);
                         renderChunks.Add(chunk);
-                        chunkPositions.Add(chunkPosition, chunk);
+                        chunks.Add(chunkPosition, chunk);
+                        Serialization.LoadChunk(chunk, true);
                     }
                 }
             }
@@ -196,7 +231,7 @@ namespace Hertzole.HertzVox
 
         private Chunk CreateChunk(int3 position)
         {
-            Chunk chunk = new Chunk(this, position);
+            Chunk chunk = new Chunk(position);
             ChunkBlocks blocks = new ChunkBlocks
             {
                 blocks = new Unity.Collections.NativeArray<Block>(16 * 16 * 16, Unity.Collections.Allocator.Persistent)
@@ -222,6 +257,10 @@ namespace Hertzole.HertzVox
                         {
                             blocks.blocks[index] = grass;
                         }
+                        else
+                        {
+                            blocks.blocks[index] = air;
+                        }
 
                         index++;
                     }
@@ -242,6 +281,12 @@ namespace Hertzole.HertzVox
         public void UnregisterLoader(VoxelLoader loader)
         {
             this.loader = null;
+        }
+
+        private void OnGUI()
+        {
+            GUILayout.Box("Chunks: " + chunks.Count);
+            GUILayout.Box("Render Chunks: " + renderChunks.Count);
         }
     }
 }

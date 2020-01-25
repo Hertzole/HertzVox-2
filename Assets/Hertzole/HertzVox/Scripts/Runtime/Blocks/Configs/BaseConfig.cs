@@ -10,10 +10,13 @@ namespace Hertzole.HertzVox
         private string blockID = "new_block";
         [SerializeField]
         private bool solid = true;
+        [SerializeField]
+        private bool transparent = false;
 
         public string BlockName { get { return blockName; } }
         public string BlockID { get { return blockID; } }
 
         public bool Solid { get { return solid; } }
+        public bool Transparent { get { return transparent; } }
     }
 }

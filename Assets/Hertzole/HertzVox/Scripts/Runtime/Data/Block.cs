@@ -4,7 +4,7 @@ namespace Hertzole.HertzVox
 {
     public struct Block
     {
-        public int id;
+        public ushort id;
 
         [NonSerialized]
         internal int topTexture;
@@ -19,7 +19,12 @@ namespace Hertzole.HertzVox
         [NonSerialized]
         internal int westTexture;
 
-        public Block(int id)
+        [NonSerialized]
+        public bool solid;
+        [NonSerialized]
+        public bool transparent;
+
+        public Block(ushort id)
         {
             this.id = id;
 
@@ -29,9 +34,11 @@ namespace Hertzole.HertzVox
             southTexture = 0;
             eastTexture = 0;
             westTexture = 0;
+            solid = true;
+            transparent = false;
         }
 
-        public Block(int id, int topTexture, int bottomTexture, int northTexture, int southTexture, int eastTexture, int westTexture) : this(id)
+        public Block(ushort id, int topTexture, int bottomTexture, int northTexture, int southTexture, int eastTexture, int westTexture) : this(id)
         {
             this.topTexture = topTexture;
             this.bottomTexture = bottomTexture;
@@ -41,10 +48,23 @@ namespace Hertzole.HertzVox
             this.westTexture = westTexture;
         }
 
-        public Block(int id, CubeConfig cubeConfig)
+        public Block(ushort id, BaseConfig config)
         {
             this.id = id;
 
+            solid = config.Solid;
+            transparent = config.Transparent;
+
+            topTexture = 0;
+            bottomTexture = 0;
+            northTexture = 0;
+            southTexture = 0;
+            eastTexture = 0;
+            westTexture = 0;
+        }
+
+        public Block(ushort id, CubeConfig cubeConfig) : this(id, (BaseConfig)cubeConfig)
+        {
             topTexture = cubeConfig.TopTextureId;
             bottomTexture = cubeConfig.BottomTextureId;
             northTexture = cubeConfig.NorthTextureId;

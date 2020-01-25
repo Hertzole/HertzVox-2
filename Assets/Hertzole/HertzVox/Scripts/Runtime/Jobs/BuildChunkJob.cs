@@ -43,13 +43,15 @@ namespace Hertzole.HertzVox
                             continue;
                         }
 
+                        Block currentBlock = blocks.blocks[index];
+
                         // South
                         if (z == 0)
                         {
                             faces[index] |= (byte)Direction.South;
                             sizeEstimate += 4;
                         }
-                        else if (z > 0 && blocks.blocks[index - 1].id == 0)
+                        else if (z > 0 && IsTransparent(blocks.blocks[index - 1], currentBlock))
                         {
                             faces[index] |= (byte)Direction.South;
                             sizeEstimate += 4;
@@ -61,7 +63,7 @@ namespace Hertzole.HertzVox
                             faces[index] |= (byte)Direction.North;
                             sizeEstimate += 4;
                         }
-                        else if (z < size - 1 && blocks.blocks[index + 1].id == 0)
+                        else if (z < size - 1 && IsTransparent(blocks.blocks[index + 1], currentBlock))
                         {
                             faces[index] |= (byte)Direction.North;
                             sizeEstimate += 4;
@@ -73,7 +75,7 @@ namespace Hertzole.HertzVox
                             faces[index] |= (byte)Direction.West;
                             sizeEstimate += 4;
                         }
-                        else if (x > 0 && blocks.blocks[index - size * size].id == 0)
+                        else if (x > 0 && IsTransparent(blocks.blocks[index - size * size], currentBlock))
                         {
                             faces[index] |= (byte)Direction.West;
                             sizeEstimate += 4;
@@ -85,7 +87,7 @@ namespace Hertzole.HertzVox
                             faces[index] |= (byte)Direction.East;
                             sizeEstimate += 4;
                         }
-                        else if (x < size - 1 && blocks.blocks[index + size * size].id == 0)
+                        else if (x < size - 1 && IsTransparent(blocks.blocks[index + size * size], currentBlock))
                         {
                             faces[index] |= (byte)Direction.East;
                             sizeEstimate += 4;
@@ -97,7 +99,7 @@ namespace Hertzole.HertzVox
                             faces[index] |= (byte)Direction.Down;
                             sizeEstimate += 4;
                         }
-                        else if (y > 0 && blocks.blocks[index - size].id == 0)
+                        else if (y > 0 && IsTransparent(blocks.blocks[index - size], currentBlock))
                         {
                             faces[index] |= (byte)Direction.Down;
                             sizeEstimate += 4;
@@ -109,7 +111,7 @@ namespace Hertzole.HertzVox
                             faces[index] |= (byte)Direction.Up;
                             sizeEstimate += 4;
                         }
-                        else if (y < size - 1 && blocks.blocks[index + size].id == 0)
+                        else if (y < size - 1 && IsTransparent(blocks.blocks[index + size], currentBlock))
                         {
                             faces[index] |= (byte)Direction.Up;
                             sizeEstimate += 4;
@@ -313,6 +315,35 @@ namespace Hertzole.HertzVox
             }
 
             faces.Dispose();
+        }
+
+        //private bool IsTransparent(int3 position)
+        //{
+        //    return !IsWithinBounds(position, size) ? false : blocks.blocks[GetIndex1DFrom3D(position.x, position.y, position.z, size)].id == 0;
+        //}
+
+        private bool IsTransparent(Block block, Block currentBlock)
+        {
+            if (block.id == 0)
+            {
+                return true;
+            }
+            else if (block.transparent)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        private int GetIndex1DFrom3D(int x, int y, int z, int size)
+        {
+            return x * size * size + y * size + z;
+        }
+
+        private bool IsWithinBounds(int3 position, int size)
+        {
+            return size > position.x && size > position.y && size > position.z && position.x >= 0 && position.y >= 0 && position.z >= 0;
         }
     }
 }
