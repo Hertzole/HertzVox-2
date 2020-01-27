@@ -13,17 +13,19 @@ MonoBehaviour:
   m_Name: Planks
   m_EditorClassIdentifier: 
   blockName: Planks
-  blockID: planks
+  blockID: 6
+  blockIdentifier: planks
   solid: 1
+  transparent: 0
   topTexture: {fileID: 2800000, guid: 3579394ffadf3944da95721d9fc1c364, type: 3}
   bottomTexture: {fileID: 2800000, guid: 3579394ffadf3944da95721d9fc1c364, type: 3}
   northTexture: {fileID: 2800000, guid: 3579394ffadf3944da95721d9fc1c364, type: 3}
   southTexture: {fileID: 2800000, guid: 3579394ffadf3944da95721d9fc1c364, type: 3}
   westTexture: {fileID: 2800000, guid: 3579394ffadf3944da95721d9fc1c364, type: 3}
   eastTexture: {fileID: 2800000, guid: 3579394ffadf3944da95721d9fc1c364, type: 3}
-  topTextureId: 0
-  bottomTextureId: 0
-  northTextureId: -1
-  southTextureId: 0
-  westTextureId: 0
-  eastTextureId: 0
+  topTextureId: 6
+  bottomTextureId: 6
+  northTextureId: 6
+  southTextureId: 6
+  westTextureId: 6
+  eastTextureId: 6

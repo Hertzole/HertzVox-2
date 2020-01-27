@@ -13,8 +13,10 @@ MonoBehaviour:
   m_Name: Stone
   m_EditorClassIdentifier: 
   blockName: Stone
-  blockID: stone
+  blockID: 1
+  blockIdentifier: stone
   solid: 1
+  transparent: 0
   topTexture: {fileID: 2800000, guid: bbe1ee11856a03b43ad66013fd6ce8de, type: 3}
   bottomTexture: {fileID: 2800000, guid: bbe1ee11856a03b43ad66013fd6ce8de, type: 3}
   northTexture: {fileID: 2800000, guid: bbe1ee11856a03b43ad66013fd6ce8de, type: 3}
@@ -23,7 +25,7 @@ MonoBehaviour:
   eastTexture: {fileID: 2800000, guid: bbe1ee11856a03b43ad66013fd6ce8de, type: 3}
   topTextureId: 0
   bottomTextureId: 0
-  northTextureId: -1
+  northTextureId: 0
   southTextureId: 0
   westTextureId: 0
   eastTextureId: 0

@@ -23,6 +23,7 @@ namespace Hertzole.HertzVox
         private NativeList<float3> vertices;
         private NativeList<int> indicies;
         private NativeList<float4> uvs;
+        private NativeList<float4> colors;
 
         private Mesh mesh;
 
@@ -101,6 +102,7 @@ namespace Hertzole.HertzVox
             vertices = new NativeList<float3>(Allocator.TempJob);
             indicies = new NativeList<int>(Allocator.TempJob);
             uvs = new NativeList<float4>(Allocator.TempJob);
+            colors = new NativeList<float4>(Allocator.TempJob);
 
             BuildChunkJob job = new BuildChunkJob()
             {
@@ -110,7 +112,8 @@ namespace Hertzole.HertzVox
                 textures = TextureProvider.GetTextureMap(),
                 vertices = vertices,
                 indicies = indicies,
-                uvs = uvs
+                uvs = uvs,
+                colors = colors
             };
 
             if (urgentUpdate)
@@ -138,11 +141,13 @@ namespace Hertzole.HertzVox
             mesh.SetVertices<float3>(vertices);
             mesh.SetIndices<int>(indicies, MeshTopology.Triangles, 0);
             mesh.SetUVs<float4>(0, uvs);
+            mesh.SetColors<float4>(colors);
             mesh.RecalculateNormals();
 
             vertices.Dispose();
             indicies.Dispose();
             uvs.Dispose();
+            colors.Dispose();
         }
 
         public void Dispose()
@@ -168,6 +173,11 @@ namespace Hertzole.HertzVox
             if (uvs.IsCreated)
             {
                 uvs.Dispose();
+            }
+
+            if (colors.IsCreated)
+            {
+                colors.Dispose();
             }
         }
 

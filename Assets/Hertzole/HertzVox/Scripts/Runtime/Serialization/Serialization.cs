@@ -15,6 +15,8 @@ namespace Hertzole.HertzVox
 		public static string SaveLocation { get { return saveLocation; } set { saveLocation = value; TempSaveLocation = value + "/temp/"; } }
 		public static string TempSaveLocation { get; private set; }
 
+		public const ushort SAVE_VERSION = 1;
+
 #if UNITY_2019_3_OR_NEWER
 		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
 		static void ResetStatics()
@@ -47,8 +49,10 @@ namespace Hertzole.HertzVox
 
 			using (BinaryWriter w = new BinaryWriter(File.Open(path, FileMode.OpenOrCreate)))
 			{
+				w.Write(SAVE_VERSION);
+
 				int intSize = sizeof(int);
-				int length = (intSize * blocks.Length) * 2;
+				int length = (intSize * blocks.Length) * 2 + sizeof(ushort);
 
 				for (int i = 0; i < blocks.Length; i++)
 				{
@@ -83,6 +87,9 @@ namespace Hertzole.HertzVox
 				{
 					int pos = 0;
 					int streamLength = (int)r.BaseStream.Length;
+
+					ushort saveVersion = r.ReadUInt16();
+					pos += sizeof(ushort);
 
 					while (pos < streamLength)
 					{

@@ -1,5 +1,6 @@
 ﻿using System;
 using Unity.Collections;
+using Unity.Jobs;
 using Unity.Mathematics;
 
 namespace Hertzole.HertzVox
@@ -38,23 +39,13 @@ namespace Hertzole.HertzVox
 
         public NativeList<int2> Compress()
         {
-            NativeList<int2> compressedBlocks = new NativeList<int2>(Allocator.Temp);
+            NativeList<int2> compressedBlocks = new NativeList<int2>(Allocator.TempJob);
 
-            int currentBlock = blocks[0].id;
-            int blockCount = 1;
-            for (int i = 1; i < blocks.Length; i++)
+            new CompressBlocksJob()
             {
-                if (blocks[i].id == currentBlock)
-                {
-                    blockCount++;
-                }
-                else
-                {
-                    compressedBlocks.Add(new int2(currentBlock, blockCount));
-                    currentBlock = blocks[i].id;
-                    blockCount = 1;
-                }
-            }
+                blocks = blocks,
+                compressedBlocks = compressedBlocks
+            }.Run();
 
             return compressedBlocks;
         }

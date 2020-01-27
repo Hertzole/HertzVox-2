@@ -13,8 +13,10 @@ MonoBehaviour:
   m_Name: Dirt
   m_EditorClassIdentifier: 
   blockName: Dirt
-  blockID: dirt
+  blockID: 2
+  blockIdentifier: dirt
   solid: 1
+  transparent: 0
   topTexture: {fileID: 2800000, guid: 5a4dee2d77df1ab4d8e66185aec9c5a1, type: 3}
   bottomTexture: {fileID: 2800000, guid: 5a4dee2d77df1ab4d8e66185aec9c5a1, type: 3}
   northTexture: {fileID: 2800000, guid: 5a4dee2d77df1ab4d8e66185aec9c5a1, type: 3}
@@ -23,7 +25,7 @@ MonoBehaviour:
   eastTexture: {fileID: 2800000, guid: 5a4dee2d77df1ab4d8e66185aec9c5a1, type: 3}
   topTextureId: 1
   bottomTextureId: 1
-  northTextureId: -1
+  northTextureId: 1
   southTextureId: 1
   westTextureId: 1
   eastTextureId: 1

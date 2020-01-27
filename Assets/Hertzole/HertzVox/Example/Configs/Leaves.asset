@@ -13,7 +13,8 @@ MonoBehaviour:
   m_Name: Leaves
   m_EditorClassIdentifier: 
   blockName: Leaves
-  blockID: leaves
+  blockID: 5
+  blockIdentifier: leaves
   solid: 1
   transparent: 1
   topTexture: {fileID: 2800000, guid: 24d6fe198ce1b6e4db4212a375510617, type: 3}

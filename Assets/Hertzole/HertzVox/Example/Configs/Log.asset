@@ -13,8 +13,10 @@ MonoBehaviour:
   m_Name: Log
   m_EditorClassIdentifier: 
   blockName: log
-  blockID: log
+  blockID: 4
+  blockIdentifier: log
   solid: 1
+  transparent: 0
   topTexture: {fileID: 2800000, guid: d69622076db2a8b4d83497ad9526c735, type: 3}
   bottomTexture: {fileID: 2800000, guid: d69622076db2a8b4d83497ad9526c735, type: 3}
   northTexture: {fileID: 2800000, guid: d67b4972488cc55489e4529cf34a4d49, type: 3}
@@ -22,7 +24,7 @@ MonoBehaviour:
   westTexture: {fileID: 2800000, guid: d67b4972488cc55489e4529cf34a4d49, type: 3}
   eastTexture: {fileID: 2800000, guid: d67b4972488cc55489e4529cf34a4d49, type: 3}
   topTextureId: 4
-  bottomTextureId: 5
+  bottomTextureId: 4
   northTextureId: 5
   southTextureId: 5
   westTextureId: 5
