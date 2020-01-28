@@ -364,6 +364,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0a775c8dbe3098b4cb4a90dc03ae83f0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  chunkDistanceX: 1
+  chunkDistanceZ: 1
 --- !u!114 &963194232
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -504,8 +506,7 @@ MonoBehaviour:
   blockCollection: {fileID: 11400000, guid: 019fc2ba0179f5b4ba7f07477403821a, type: 2}
   chunkMaterial: {fileID: 2100000, guid: f1b1e4181ea66d8419d18098f8dcab39, type: 2}
   chunkGenerateDelay: 0.25
-  saveCube: {fileID: 0}
-  blockCube: {fileID: 0}
+  clearTempOnDestroy: 1
 --- !u!4 &1740262676
 Transform:
   m_ObjectHideFlags: 0

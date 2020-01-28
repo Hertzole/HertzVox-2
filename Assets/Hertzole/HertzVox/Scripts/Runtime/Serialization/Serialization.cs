@@ -136,6 +136,7 @@ namespace Hertzole.HertzVox
 		private static string GetChunkPath(Chunk chunk, bool temporary)
 		{
 			return (temporary ? TempSaveLocation : SaveLocation) + $"/{chunk.position.x},{chunk.position.y},{chunk.position.z}.bin";
+			//return string.Format("{0}/{1},{2},{3}.bin", (temporary ? TempSaveLocation : SaveLocation), chunk.position.x, chunk.position.y, chunk.position.z);
 		}
 	}
 }

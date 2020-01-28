@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using Unity.Collections;
 using UnityEngine;
 using UnityEngine.Assertions;
 
@@ -6,7 +7,7 @@ namespace Hertzole.HertzVox
 {
     public static class BlockProvider
     {
-        private static Dictionary<ushort, Block> blockIds;
+        private static NativeHashMap<ushort, Block> blockIds = new NativeHashMap<ushort, Block>();
         private static Dictionary<ushort, string> blockNames;
         private static Dictionary<string, ushort> blockIdentifiers;
 
@@ -16,7 +17,8 @@ namespace Hertzole.HertzVox
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void ResetStatics()
         {
-            blockIds = new Dictionary<ushort, Block>();
+            Dispose();
+
             blockNames = new Dictionary<ushort, string>();
             blockIdentifiers = new Dictionary<string, ushort>();
             isInitialized = false;
@@ -31,9 +33,8 @@ namespace Hertzole.HertzVox
                 return;
             }
 
-            blockIds = new Dictionary<ushort, Block>();
+            blockIds = new NativeHashMap<ushort, Block>(0, Allocator.Persistent);
             blockNames = new Dictionary<ushort, string>();
-            ushort index = 1;
 
             blockIds.Add(0, new Block(0));
             blockNames.Add(0, "Air");
@@ -48,19 +49,25 @@ namespace Hertzole.HertzVox
 
                 if (blockCollection.Blocks[i] is CubeConfig cube)
                 {
-                    Block block = new Block(index, cube);
+                    Block block = new Block(blockCollection.Blocks[i].BlockID, cube);
                     blockIds.Add(blockCollection.Blocks[i].BlockID, block);
                 }
                 else
                 {
-                    Block block = new Block(index);
+                    Block block = new Block(blockCollection.Blocks[i].BlockID);
                     blockIds.Add(blockCollection.Blocks[i].BlockID, block);
                 }
-
-                index++;
             }
 
             isInitialized = true;
+        }
+
+        public static void Dispose()
+        {
+            if (blockIds.IsCreated)
+            {
+                blockIds.Dispose();
+            }
         }
 
         public static bool TryGetBlock(ushort id, out Block block)
@@ -71,8 +78,6 @@ namespace Hertzole.HertzVox
                 block = new Block(0);
                 return false;
             }
-
-            Assert.IsNotNull(blockIds);
 
             return blockIds.TryGetValue(id, out block);
         }
@@ -106,6 +111,11 @@ namespace Hertzole.HertzVox
         public static string GetBlockName(string identifier)
         {
             return GetBlockName(blockIdentifiers[identifier]);
+        }
+
+        public static NativeHashMap<ushort, Block> GetBlockMap()
+        {
+            return blockIds;
         }
     }
 }

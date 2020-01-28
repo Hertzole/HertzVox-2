@@ -15,7 +15,7 @@
 
         CGPROGRAM
         // Physically based Standard lighting model, and enable shadows on all light types
-        #pragma surface surf Standard Lambert alphatest:_Cutoff
+        #pragma surface surf Standard
         #pragma vertex vert        
         
         // Use shader model 3.0 target, to get nicer looking lighting
@@ -27,6 +27,7 @@
         {
             float3 position;
             float4 custom_uv;
+            //float4 vertColor;
         };
 
         half _Glossiness;
@@ -49,6 +50,7 @@
             UNITY_INITIALIZE_OUTPUT(Input, o);
             o.custom_uv = v.texcoord;
             o.position = v.vertex;
+            //o.vertColor = v.color;
         }
 
         void surf (Input IN, inout SurfaceOutputStandard o)

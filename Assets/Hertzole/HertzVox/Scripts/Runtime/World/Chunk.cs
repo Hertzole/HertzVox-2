@@ -1,12 +1,11 @@
-﻿using System;
-using Unity.Collections;
+﻿using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
 
 namespace Hertzole.HertzVox
 {
-    public class Chunk : IDisposable
+    public class Chunk
     {
         public ChunkBlocks blocks;
         public int3 position;
@@ -15,6 +14,7 @@ namespace Hertzole.HertzVox
         private bool updatingMesh;
         private bool urgentUpdate;
         public bool changed;
+        public bool render;
 
         private int frameCount;
 
@@ -24,6 +24,7 @@ namespace Hertzole.HertzVox
         private NativeList<int> indicies;
         private NativeList<float4> uvs;
         private NativeList<float4> colors;
+        private NativeArray<ushort> nativeBlocks;
 
         private Mesh mesh;
 
@@ -36,7 +37,7 @@ namespace Hertzole.HertzVox
 
         public void Draw(Material chunkMaterial)
         {
-            if (mesh != null)
+            if (mesh != null && render)
             {
                 Graphics.DrawMesh(mesh, Matrix4x4.identity, chunkMaterial, 0);
             }
@@ -103,12 +104,14 @@ namespace Hertzole.HertzVox
             indicies = new NativeList<int>(Allocator.TempJob);
             uvs = new NativeList<float4>(Allocator.TempJob);
             colors = new NativeList<float4>(Allocator.TempJob);
+            nativeBlocks = blocks.GetBlocks(Allocator.TempJob);
 
             BuildChunkJob job = new BuildChunkJob()
             {
                 size = CHUNK_SIZE,
                 position = position,
-                blocks = blocks.blocks,
+                blocks = nativeBlocks,
+                blockMap = BlockProvider.GetBlockMap(),
                 textures = TextureProvider.GetTextureMap(),
                 vertices = vertices,
                 indicies = indicies,
@@ -148,10 +151,13 @@ namespace Hertzole.HertzVox
             indicies.Dispose();
             uvs.Dispose();
             colors.Dispose();
+            nativeBlocks.Dispose();
         }
 
-        public void Dispose()
+        public void Dispose(bool force = false)
         {
+            //TODO: Make sure chunk can be disposed first.
+
             if (mesh != null)
             {
                 UnityEngine.Object.Destroy(mesh);
@@ -179,6 +185,11 @@ namespace Hertzole.HertzVox
             {
                 colors.Dispose();
             }
+
+            if (nativeBlocks.IsCreated)
+            {
+                nativeBlocks.Dispose();
+            }
         }
 
         public void SetBlock(int x, int y, int z, Block block, bool urgent = true)
@@ -205,12 +216,25 @@ namespace Hertzole.HertzVox
 
         public override bool Equals(object obj)
         {
-            if (obj != null && obj is Chunk chunk && position.x == chunk.position.x && position.y == chunk.position.y)
+            Chunk chunk = obj as Chunk;
+            if (chunk == null)
             {
-                return chunk.position.z == position.z;
+                return false;
             }
 
-            return false;
+            if (position.x != chunk.position.x || position.y != chunk.position.y)
+            {
+                return false;
+            }
+
+            return chunk.position.z == position.z;
+
+            //if (obj != null && obj is Chunk chunk && position.x == chunk.position.x && position.y == chunk.position.y)
+            //{
+            //    return chunk.position.z == position.z;
+            //}
+
+            //return false;
         }
 
         public override int GetHashCode()

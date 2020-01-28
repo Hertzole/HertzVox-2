@@ -13,7 +13,9 @@ namespace Hertzole.HertzVox
         [ReadOnly]
         public int size;
         [ReadOnly]
-        public NativeArray<Block> blocks;
+        public NativeArray<ushort> blocks;
+        [ReadOnly]
+        public NativeHashMap<ushort, Block> blockMap;
         [ReadOnly]
         public NativeHashMap<int, int2> textures;
 
@@ -23,6 +25,8 @@ namespace Hertzole.HertzVox
         public NativeList<int> indicies;
         [WriteOnly]
         public NativeList<float4> uvs;
+        [WriteOnly]
+        public NativeList<float4> colors;
 
         public void Execute()
         {
@@ -36,14 +40,14 @@ namespace Hertzole.HertzVox
                 {
                     for (int z = 0; z < size; z++)
                     {
-                        if (blocks[index].id == 0) // Is air
+                        if (blocks[index] == 0) // Is air
                         {
                             faces[index] = 0;
                             index++;
                             continue;
                         }
 
-                        Block currentBlock = blocks[index];
+                        Block currentBlock = blockMap[blocks[index]];
 
                         // South
                         if (z == 0)
@@ -51,7 +55,7 @@ namespace Hertzole.HertzVox
                             faces[index] |= (byte)Direction.South;
                             sizeEstimate += 4;
                         }
-                        else if (z > 0 && IsTransparent(blocks[index - 1], currentBlock))
+                        else if (z > 0 && IsTransparent(blockMap[blocks[index - 1]], currentBlock))
                         {
                             faces[index] |= (byte)Direction.South;
                             sizeEstimate += 4;
@@ -63,7 +67,7 @@ namespace Hertzole.HertzVox
                             faces[index] |= (byte)Direction.North;
                             sizeEstimate += 4;
                         }
-                        else if (z < size - 1 && IsTransparent(blocks[index + 1], currentBlock))
+                        else if (z < size - 1 && IsTransparent(blockMap[blocks[index + 1]], currentBlock))
                         {
                             faces[index] |= (byte)Direction.North;
                             sizeEstimate += 4;
@@ -75,7 +79,7 @@ namespace Hertzole.HertzVox
                             faces[index] |= (byte)Direction.West;
                             sizeEstimate += 4;
                         }
-                        else if (x > 0 && IsTransparent(blocks[index - size * size], currentBlock))
+                        else if (x > 0 && IsTransparent(blockMap[blocks[index - size * size]], currentBlock))
                         {
                             faces[index] |= (byte)Direction.West;
                             sizeEstimate += 4;
@@ -87,7 +91,7 @@ namespace Hertzole.HertzVox
                             faces[index] |= (byte)Direction.East;
                             sizeEstimate += 4;
                         }
-                        else if (x < size - 1 && IsTransparent(blocks[index + size * size], currentBlock))
+                        else if (x < size - 1 && IsTransparent(blockMap[blocks[index + size * size]], currentBlock))
                         {
                             faces[index] |= (byte)Direction.East;
                             sizeEstimate += 4;
@@ -99,7 +103,7 @@ namespace Hertzole.HertzVox
                             faces[index] |= (byte)Direction.Down;
                             sizeEstimate += 4;
                         }
-                        else if (y > 0 && IsTransparent(blocks[index - size], currentBlock))
+                        else if (y > 0 && IsTransparent(blockMap[blocks[index - size]], currentBlock))
                         {
                             faces[index] |= (byte)Direction.Down;
                             sizeEstimate += 4;
@@ -111,7 +115,7 @@ namespace Hertzole.HertzVox
                             faces[index] |= (byte)Direction.Up;
                             sizeEstimate += 4;
                         }
-                        else if (y < size - 1 && IsTransparent(blocks[index + size], currentBlock))
+                        else if (y < size - 1 && IsTransparent(blockMap[blocks[index + size]], currentBlock))
                         {
                             faces[index] |= (byte)Direction.Up;
                             sizeEstimate += 4;
@@ -146,12 +150,13 @@ namespace Hertzole.HertzVox
                 {
                     for (int z = 0; z < size; z++)
                     {
-
                         if (faces[index] == 0) // No face.
                         {
                             index++;
                             continue;
                         }
+
+                        Block block = blockMap[blocks[index]];
 
                         if ((faces[index] & (byte)Direction.North) != 0)
                         {
@@ -160,7 +165,7 @@ namespace Hertzole.HertzVox
                             vertices[vertexIndex + 2] = new float3(x + position.x, y + position.y + 1, z + position.z + 1);
                             vertices[vertexIndex + 3] = new float3(x + position.x + 1, y + position.y + 1, z + position.z + 1);
 
-                            int2 northTexture = textures[blocks[index].northTexture];
+                            int2 northTexture = textures[block.northTexture];
 
                             uvs[vertexIndex] = new float4(0, 0, northTexture.x, northTexture.y);
                             uvs[vertexIndex + 1] = new float4(1, 0, northTexture.x, northTexture.y);
@@ -175,6 +180,11 @@ namespace Hertzole.HertzVox
                             indicies[trianglesIndex + 4] = vertexIndex + 3;
                             indicies[trianglesIndex + 5] = vertexIndex + 2;
 
+                            colors.Add(new float4(1, 0, 0, 1));
+                            colors.Add(new float4(1, 0, 0, 1));
+                            colors.Add(new float4(1, 0, 0, 1));
+                            colors.Add(new float4(1, 0, 0, 1));
+
                             vertexIndex += 4;
                             trianglesIndex += 6;
                         }
@@ -186,7 +196,7 @@ namespace Hertzole.HertzVox
                             vertices[vertexIndex + 2] = new float3(x + position.x + 1, y + position.y + 1, z + position.z);
                             vertices[vertexIndex + 3] = new float3(x + position.x + 1, y + position.y + 1, z + position.z + 1);
 
-                            int2 eastTexture = textures[blocks[index].eastTexture];
+                            int2 eastTexture = textures[block.eastTexture];
 
                             uvs[vertexIndex] = new float4(0, 0, eastTexture.x, eastTexture.y);
                             uvs[vertexIndex + 1] = new float4(1, 0, eastTexture.x, eastTexture.y);
@@ -201,6 +211,11 @@ namespace Hertzole.HertzVox
                             indicies[trianglesIndex + 4] = vertexIndex + 3;
                             indicies[trianglesIndex + 5] = vertexIndex + 1;
 
+                            colors.Add(new float4(1, 0, 0, 1));
+                            colors.Add(new float4(1, 0, 0, 1));
+                            colors.Add(new float4(1, 0, 0, 1));
+                            colors.Add(new float4(1, 0, 0, 1));
+
                             vertexIndex += 4;
                             trianglesIndex += 6;
                         }
@@ -212,7 +227,7 @@ namespace Hertzole.HertzVox
                             vertices[vertexIndex + 2] = new float3(x + position.x, y + position.y + 1, z + position.z);
                             vertices[vertexIndex + 3] = new float3(x + position.x + 1, y + position.y + 1, z + position.z);
 
-                            int2 southTexture = textures[blocks[index].southTexture];
+                            int2 southTexture = textures[block.southTexture];
 
                             uvs[vertexIndex] = new float4(0, 0, southTexture.x, southTexture.y);
                             uvs[vertexIndex + 1] = new float4(1, 0, southTexture.x, southTexture.y);
@@ -227,6 +242,11 @@ namespace Hertzole.HertzVox
                             indicies[trianglesIndex + 4] = vertexIndex + 3;
                             indicies[trianglesIndex + 5] = vertexIndex + 1;
 
+                            colors.Add(new float4(1, 0, 0, 1));
+                            colors.Add(new float4(1, 0, 0, 1));
+                            colors.Add(new float4(1, 0, 0, 1));
+                            colors.Add(new float4(1, 0, 0, 1));
+
                             vertexIndex += 4;
                             trianglesIndex += 6;
                         }
@@ -238,7 +258,7 @@ namespace Hertzole.HertzVox
                             vertices[vertexIndex + 2] = new float3(x + position.x, y + position.y, z + position.z + 1);
                             vertices[vertexIndex + 3] = new float3(x + position.x, y + position.y + 1, z + position.z + 1);
 
-                            int2 westTexture = textures[blocks[index].westTexture];
+                            int2 westTexture = textures[block.westTexture];
 
                             uvs[vertexIndex] = new float4(0, 0, westTexture.x, westTexture.y);
                             uvs[vertexIndex + 1] = new float4(0, 1, westTexture.x, westTexture.y);
@@ -253,6 +273,11 @@ namespace Hertzole.HertzVox
                             indicies[trianglesIndex + 4] = vertexIndex + 3;
                             indicies[trianglesIndex + 5] = vertexIndex + 1;
 
+                            colors.Add(new float4(1, 0, 0, 1));
+                            colors.Add(new float4(1, 0, 0, 1));
+                            colors.Add(new float4(1, 0, 0, 1));
+                            colors.Add(new float4(1, 0, 0, 1));
+
                             vertexIndex += 4;
                             trianglesIndex += 6;
                         }
@@ -264,7 +289,7 @@ namespace Hertzole.HertzVox
                             vertices[vertexIndex + 2] = new float3(x + position.x, y + position.y + 1, z + position.z + 1);
                             vertices[vertexIndex + 3] = new float3(x + position.x + 1, y + position.y + 1, z + position.z + 1);
 
-                            int2 topTexture = textures[blocks[index].topTexture];
+                            int2 topTexture = textures[block.topTexture];
 
                             uvs[vertexIndex] = new float4(0, 0, topTexture.x, topTexture.y);
                             uvs[vertexIndex + 1] = new float4(1, 0, topTexture.x, topTexture.y);
@@ -279,6 +304,11 @@ namespace Hertzole.HertzVox
                             indicies[trianglesIndex + 4] = vertexIndex + 3;
                             indicies[trianglesIndex + 5] = vertexIndex + 1;
 
+                            colors.Add(new float4(0, 1, 0, 1));
+                            colors.Add(new float4(0, 1, 0, 1));
+                            colors.Add(new float4(0, 1, 0, 1));
+                            colors.Add(new float4(0, 1, 0, 1));
+
                             vertexIndex += 4;
                             trianglesIndex += 6;
                         }
@@ -290,7 +320,7 @@ namespace Hertzole.HertzVox
                             vertices[vertexIndex + 2] = new float3(x + position.x + 1, y + position.y, z + position.z);
                             vertices[vertexIndex + 3] = new float3(x + position.x + 1, y + position.y, z + position.z + 1);
 
-                            int2 bottomTexture = textures[blocks[index].bottomTexture];
+                            int2 bottomTexture = textures[block.bottomTexture];
 
                             uvs[vertexIndex] = new float4(0, 0, bottomTexture.x, bottomTexture.y);
                             uvs[vertexIndex + 1] = new float4(1, 0, bottomTexture.x, bottomTexture.y);
@@ -304,6 +334,11 @@ namespace Hertzole.HertzVox
                             indicies[trianglesIndex + 3] = vertexIndex + 2;
                             indicies[trianglesIndex + 4] = vertexIndex + 3;
                             indicies[trianglesIndex + 5] = vertexIndex + 1;
+
+                            colors.Add(new float4(1, 0, 0, 1));
+                            colors.Add(new float4(1, 0, 0, 1));
+                            colors.Add(new float4(1, 0, 0, 1));
+                            colors.Add(new float4(1, 0, 0, 1));
 
                             vertexIndex += 4;
                             trianglesIndex += 6;

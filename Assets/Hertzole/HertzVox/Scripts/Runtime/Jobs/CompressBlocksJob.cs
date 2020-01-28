@@ -9,7 +9,7 @@ namespace Hertzole.HertzVox
     public struct CompressBlocksJob : IJob
     {
         [ReadOnly]
-        public NativeArray<Block> blocks;
+        public NativeArray<ushort> blocks;
         [ReadOnly]
         public int chunkSize;
         [WriteOnly]
@@ -17,18 +17,18 @@ namespace Hertzole.HertzVox
 
         public void Execute()
         {
-            int currentBlock = blocks[0].id;
+            int currentBlock = blocks[0];
             int blockCount = 1;
             for (int i = 1; i < blocks.Length; i++)
             {
-                if (blocks[i].id == currentBlock)
+                if (blocks[i] == currentBlock)
                 {
                     blockCount++;
                 }
                 else
                 {
                     compressedBlocks.Add(new int2(currentBlock, blockCount));
-                    currentBlock = blocks[i].id;
+                    currentBlock = blocks[i];
                     blockCount = 1;
                 }
             }

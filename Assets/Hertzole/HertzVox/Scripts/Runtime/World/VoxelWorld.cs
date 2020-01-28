@@ -39,6 +39,7 @@ namespace Hertzole.HertzVox
         public int2 AtlasSize { get; private set; }
 
         private Dictionary<int3, Chunk> chunks = new Dictionary<int3, Chunk>();
+        //private NativeHashMap<int3, Chunk> chunks;
 
         public static VoxelWorld Main { get; private set; }
 
@@ -92,16 +93,19 @@ namespace Hertzole.HertzVox
             logs = BlockProvider.GetBlock("log");
             planks = BlockProvider.GetBlock("planks");
             leaves = BlockProvider.GetBlock("leaves");
+
+            //chunks = new NativeHashMap<int3, Chunk>(0, Allocator.Persistent);
         }
 
         private void OnDestroy()
         {
             foreach (Chunk chunk in chunks.Values)
             {
-                chunk.Dispose();
+                chunk.Dispose(true);
             }
 
             TextureProvider.Dispose();
+            BlockProvider.Dispose();
 
             Destroy(mat);
 
@@ -206,22 +210,31 @@ namespace Hertzole.HertzVox
 
             renderChunks.Clear();
 
-            for (int x = -10 + targetPosition.x; x < 10 + targetPosition.x; x++)
+            int xMin = -loader.ChunkDistanceX + targetPosition.x - 1;
+            int zMin = -loader.ChunkDistanceZ + targetPosition.z - 1;
+            int xMax = loader.ChunkDistanceX + targetPosition.x + 2;
+            int zMax = loader.ChunkDistanceZ + targetPosition.z + 2;
+
+            for (int x = xMin; x < xMax; x++)
             {
-                for (int z = -10 + targetPosition.z; z < 10 + targetPosition.z; z++)
+                for (int z = zMin; z < zMax; z++)
                 {
                     int3 chunkPosition = new int3(x * Chunk.CHUNK_SIZE, 0, z * Chunk.CHUNK_SIZE);
 
-                    if (chunks.TryGetValue(chunkPosition, out Chunk chunk))
-                    {
-                        renderChunks.Add(chunk);
-                    }
-                    else
+                    if (!chunks.TryGetValue(chunkPosition, out Chunk chunk))
                     {
                         chunk = CreateChunk(chunkPosition);
-                        renderChunks.Add(chunk);
                         chunks.Add(chunkPosition, chunk);
                         Serialization.LoadChunk(chunk, true);
+                    }
+
+                    renderChunks.Add(chunk);
+                    chunk.render = false;
+
+                    if (x != xMin && z != zMin && x != xMax - 1 && z != zMax - 1)
+                    {
+                        chunk.render = true;
+                        chunk.UpdateChunkIfNeeded();
                     }
                 }
             }
@@ -253,10 +266,8 @@ namespace Hertzole.HertzVox
         private Chunk CreateChunk(int3 position)
         {
             Chunk chunk = new Chunk(position);
-            ChunkBlocks blocks = new ChunkBlocks
-            {
-                blocks = new Unity.Collections.NativeArray<Block>(16 * 16 * 16, Unity.Collections.Allocator.Persistent)
-            };
+            Debug.Log("Create chunk: " + position + " | " + position / Chunk.CHUNK_SIZE);
+            ChunkBlocks blocks = new ChunkBlocks(Chunk.CHUNK_SIZE);
 
             int index = 0;
 
@@ -268,19 +279,19 @@ namespace Hertzole.HertzVox
                     {
                         if (y < 4)
                         {
-                            blocks.blocks[index] = stone;
+                            blocks.Set(index, stone);
                         }
                         else if (y >= 4 && y < 6)
                         {
-                            blocks.blocks[index] = dirt;
+                            blocks.Set(index, dirt);
                         }
                         else if (y == 6)
                         {
-                            blocks.blocks[index] = grass;
+                            blocks.Set(index, grass);
                         }
                         else
                         {
-                            blocks.blocks[index] = air;
+                            blocks.Set(index, air);
                         }
 
                         index++;
@@ -290,7 +301,6 @@ namespace Hertzole.HertzVox
 
             chunk.blocks = blocks;
 
-            chunk.UpdateChunk();
             return chunk;
         }
 
@@ -302,6 +312,20 @@ namespace Hertzole.HertzVox
         public void UnregisterLoader(VoxelLoader loader)
         {
             this.loader = null;
+        }
+
+        private void OnGUI()
+        {
+            GUILayout.Box("Chunks: " + chunks.Count);
+            GUILayout.Box("Render Chunks: " + renderChunks.Count);
+        }
+
+        private void OnDrawGizmos()
+        {
+            foreach (KeyValuePair<int3, Chunk> chunk in chunks)
+            {
+                Gizmos.DrawWireCube(new Vector3(chunk.Key.x + (Chunk.CHUNK_SIZE / 2), chunk.Key.y + (Chunk.CHUNK_SIZE / 2), chunk.Key.z + (Chunk.CHUNK_SIZE / 2)), Vector3.one * Chunk.CHUNK_SIZE);
+            }
         }
     }
 }
