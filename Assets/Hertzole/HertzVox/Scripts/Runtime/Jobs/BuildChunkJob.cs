@@ -18,6 +18,14 @@ namespace Hertzole.HertzVox
         public NativeHashMap<ushort, Block> blockMap;
         [ReadOnly]
         public NativeHashMap<int, int2> textures;
+        [ReadOnly]
+        public NativeArray<ushort> northBlocks;
+        [ReadOnly]
+        public NativeArray<ushort> southBlocks;
+        [ReadOnly]
+        public NativeArray<ushort> eastBlocks;
+        [ReadOnly]
+        public NativeArray<ushort> westBlocks;
 
         [WriteOnly]
         public NativeList<float3> vertices;
@@ -50,7 +58,7 @@ namespace Hertzole.HertzVox
                         Block currentBlock = blockMap[blocks[index]];
 
                         // South
-                        if (z == 0)
+                        if (z == 0 && IsTransparent(blockMap[southBlocks[GetIndex1DFrom3D(x, y, size - 1, size)]], currentBlock))
                         {
                             faces[index] |= (byte)Direction.South;
                             sizeEstimate += 4;
@@ -62,7 +70,7 @@ namespace Hertzole.HertzVox
                         }
 
                         // North
-                        if (z == size - 1)
+                        if (z == size - 1 && IsTransparent(blockMap[northBlocks[GetIndex1DFrom3D(x, y, 0, size)]], currentBlock))
                         {
                             faces[index] |= (byte)Direction.North;
                             sizeEstimate += 4;
@@ -74,7 +82,7 @@ namespace Hertzole.HertzVox
                         }
 
                         // West
-                        if (x == 0)
+                        if (x == 0 && IsTransparent(blockMap[westBlocks[GetIndex1DFrom3D(size - 1, y, z, size)]], currentBlock))
                         {
                             faces[index] |= (byte)Direction.West;
                             sizeEstimate += 4;
@@ -86,7 +94,7 @@ namespace Hertzole.HertzVox
                         }
 
                         // East
-                        if (x == size - 1)
+                        if (x == size - 1 && IsTransparent(blockMap[eastBlocks[GetIndex1DFrom3D(0, y, z, size)]], currentBlock))
                         {
                             faces[index] |= (byte)Direction.East;
                             sizeEstimate += 4;

@@ -13,6 +13,7 @@ namespace Hertzole.HertzVox
         private bool dirty;
         private bool updatingMesh;
         private bool urgentUpdate;
+        private bool onlyThis;
         public bool changed;
         public bool render;
 
@@ -24,7 +25,6 @@ namespace Hertzole.HertzVox
         private NativeList<int> indicies;
         private NativeList<float4> uvs;
         private NativeList<float4> colors;
-        private NativeArray<ushort> nativeBlocks;
 
         private Mesh mesh;
 
@@ -77,18 +77,30 @@ namespace Hertzole.HertzVox
         {
             urgentUpdate = urgent;
             dirty = true;
+            onlyThis = false;
+        }
+
+        internal void OnlyUpdateThis(bool urgent = false)
+        {
+            UpdateChunk(urgent);
+            onlyThis = true;
         }
 
         public void UpdateChunkIfNeeded()
         {
             if (mesh == null)
             {
-                UpdateChunk(false);
+                OnlyUpdateThis(false);
             }
         }
 
         private void UpdateMesh()
         {
+            if (!render)
+            {
+                return;
+            }
+
             if (updatingMesh)
             {
                 //TODO: Handle updating mesh while already updating.
@@ -104,20 +116,37 @@ namespace Hertzole.HertzVox
             indicies = new NativeList<int>(Allocator.TempJob);
             uvs = new NativeList<float4>(Allocator.TempJob);
             colors = new NativeList<float4>(Allocator.TempJob);
-            nativeBlocks = blocks.GetBlocks(Allocator.TempJob);
+
+            Chunk northChunk = VoxelWorld.Main.GetChunk(position + new int3(0, 0, 16));
+            Chunk southChunk = VoxelWorld.Main.GetChunk(position - new int3(0, 0, 16));
+            Chunk eastChunk = VoxelWorld.Main.GetChunk(position + new int3(16, 0, 0));
+            Chunk westChunk = VoxelWorld.Main.GetChunk(position - new int3(16, 0, 0));
 
             BuildChunkJob job = new BuildChunkJob()
             {
                 size = CHUNK_SIZE,
                 position = position,
-                blocks = nativeBlocks,
+                blocks = blocks.GetBlocks(),
                 blockMap = BlockProvider.GetBlockMap(),
                 textures = TextureProvider.GetTextureMap(),
                 vertices = vertices,
                 indicies = indicies,
                 uvs = uvs,
-                colors = colors
+                colors = colors,
+                northBlocks = northChunk.blocks.GetBlocks(),
+                southBlocks = southChunk.blocks.GetBlocks(),
+                eastBlocks = eastChunk.blocks.GetBlocks(),
+                westBlocks = westChunk.blocks.GetBlocks(),
             };
+
+            if (!onlyThis)
+            {
+                northChunk.OnlyUpdateThis(true);
+                southChunk.OnlyUpdateThis(true);
+                eastChunk.OnlyUpdateThis(true);
+                westChunk.OnlyUpdateThis(true);
+                //Debug.Log("Chunk " + ToString() + " updated " + northChunk.ToString());
+            }
 
             if (urgentUpdate)
             {
@@ -128,6 +157,8 @@ namespace Hertzole.HertzVox
             {
                 this.job = job.Schedule();
             }
+
+            //Debug.Log(ToString() + " updated");
         }
 
         private void OnMeshUpdated()
@@ -151,7 +182,6 @@ namespace Hertzole.HertzVox
             indicies.Dispose();
             uvs.Dispose();
             colors.Dispose();
-            nativeBlocks.Dispose();
         }
 
         public void Dispose(bool force = false)
@@ -184,11 +214,6 @@ namespace Hertzole.HertzVox
             if (colors.IsCreated)
             {
                 colors.Dispose();
-            }
-
-            if (nativeBlocks.IsCreated)
-            {
-                nativeBlocks.Dispose();
             }
         }
 
@@ -240,6 +265,11 @@ namespace Hertzole.HertzVox
         public override int GetHashCode()
         {
             return position.GetHashCode() * 17;
+        }
+
+        public override string ToString()
+        {
+            return $"Chunk ({position.x},{position.y},{position.z})";
         }
     }
 }

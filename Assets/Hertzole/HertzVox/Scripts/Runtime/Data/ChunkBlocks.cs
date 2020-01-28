@@ -14,9 +14,9 @@ namespace Hertzole.HertzVox
             blocks = new NativeArray<ushort>(size * size * size, Allocator.Persistent);
         }
 
-        public NativeArray<ushort> GetBlocks(Allocator allocator = Allocator.TempJob)
+        public NativeArray<ushort> GetBlocks()
         {
-            return new NativeArray<ushort>(blocks, allocator);
+            return blocks;
         }
 
         public Block Get(int x, int y, int z)

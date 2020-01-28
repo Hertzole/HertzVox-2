@@ -170,7 +170,7 @@ namespace Hertzole.HertzVox
             return BlockProvider.GetBlock("air");
         }
 
-        public void SetBlock(int3 position, Block block)
+        public void SetBlock(int3 position, Block block, bool urgent = true)
         {
             int3 chunkPos = Helpers.ContainingChunkPosition(position);
 
@@ -181,7 +181,7 @@ namespace Hertzole.HertzVox
                 int zz = Helpers.Mod(position.z, Chunk.CHUNK_SIZE);
 
                 chunk.SetBlock(xx, yy, zz, block);
-                chunk.UpdateChunk();
+                chunk.UpdateChunk(urgent);
             }
         }
 
@@ -266,7 +266,6 @@ namespace Hertzole.HertzVox
         private Chunk CreateChunk(int3 position)
         {
             Chunk chunk = new Chunk(position);
-            Debug.Log("Create chunk: " + position + " | " + position / Chunk.CHUNK_SIZE);
             ChunkBlocks blocks = new ChunkBlocks(Chunk.CHUNK_SIZE);
 
             int index = 0;
