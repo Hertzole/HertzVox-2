@@ -2,7 +2,7 @@
   "dependencies": {
     "com.unity.burst": "1.1.2",
     "com.unity.jobs": "0.2.3-preview.9",
-    "com.unity.postprocessing": "2.2.2",
+    "com.unity.postprocessing": "2.3.0",
     "com.unity.test-framework": "1.1.9",
     "com.unity.textmeshpro": "2.0.1",
     "com.unity.ugui": "1.0.0",

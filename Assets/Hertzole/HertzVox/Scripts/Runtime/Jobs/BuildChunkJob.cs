@@ -188,10 +188,10 @@ namespace Hertzole.HertzVox
                             indicies[trianglesIndex + 4] = vertexIndex + 3;
                             indicies[trianglesIndex + 5] = vertexIndex + 2;
 
-                            colors.Add(new float4(1, 0, 0, 1));
-                            colors.Add(new float4(1, 0, 0, 1));
-                            colors.Add(new float4(1, 0, 0, 1));
-                            colors.Add(new float4(1, 0, 0, 1));
+                            colors.Add(block.northColor);
+                            colors.Add(block.northColor);
+                            colors.Add(block.northColor);
+                            colors.Add(block.northColor);
 
                             vertexIndex += 4;
                             trianglesIndex += 6;
@@ -219,10 +219,10 @@ namespace Hertzole.HertzVox
                             indicies[trianglesIndex + 4] = vertexIndex + 3;
                             indicies[trianglesIndex + 5] = vertexIndex + 1;
 
-                            colors.Add(new float4(1, 0, 0, 1));
-                            colors.Add(new float4(1, 0, 0, 1));
-                            colors.Add(new float4(1, 0, 0, 1));
-                            colors.Add(new float4(1, 0, 0, 1));
+                            colors.Add(block.eastColor);
+                            colors.Add(block.eastColor);
+                            colors.Add(block.eastColor);
+                            colors.Add(block.eastColor);
 
                             vertexIndex += 4;
                             trianglesIndex += 6;
@@ -250,10 +250,10 @@ namespace Hertzole.HertzVox
                             indicies[trianglesIndex + 4] = vertexIndex + 3;
                             indicies[trianglesIndex + 5] = vertexIndex + 1;
 
-                            colors.Add(new float4(1, 0, 0, 1));
-                            colors.Add(new float4(1, 0, 0, 1));
-                            colors.Add(new float4(1, 0, 0, 1));
-                            colors.Add(new float4(1, 0, 0, 1));
+                            colors.Add(block.southColor);
+                            colors.Add(block.southColor);
+                            colors.Add(block.southColor);
+                            colors.Add(block.southColor);
 
                             vertexIndex += 4;
                             trianglesIndex += 6;
@@ -281,10 +281,10 @@ namespace Hertzole.HertzVox
                             indicies[trianglesIndex + 4] = vertexIndex + 3;
                             indicies[trianglesIndex + 5] = vertexIndex + 1;
 
-                            colors.Add(new float4(1, 0, 0, 1));
-                            colors.Add(new float4(1, 0, 0, 1));
-                            colors.Add(new float4(1, 0, 0, 1));
-                            colors.Add(new float4(1, 0, 0, 1));
+                            colors.Add(block.westColor);
+                            colors.Add(block.westColor);
+                            colors.Add(block.westColor);
+                            colors.Add(block.westColor);
 
                             vertexIndex += 4;
                             trianglesIndex += 6;
@@ -312,10 +312,10 @@ namespace Hertzole.HertzVox
                             indicies[trianglesIndex + 4] = vertexIndex + 3;
                             indicies[trianglesIndex + 5] = vertexIndex + 1;
 
-                            colors.Add(new float4(0, 1, 0, 1));
-                            colors.Add(new float4(0, 1, 0, 1));
-                            colors.Add(new float4(0, 1, 0, 1));
-                            colors.Add(new float4(0, 1, 0, 1));
+                            colors.Add(block.topColor);
+                            colors.Add(block.topColor);
+                            colors.Add(block.topColor);
+                            colors.Add(block.topColor);
 
                             vertexIndex += 4;
                             trianglesIndex += 6;
@@ -343,10 +343,10 @@ namespace Hertzole.HertzVox
                             indicies[trianglesIndex + 4] = vertexIndex + 3;
                             indicies[trianglesIndex + 5] = vertexIndex + 1;
 
-                            colors.Add(new float4(1, 0, 0, 1));
-                            colors.Add(new float4(1, 0, 0, 1));
-                            colors.Add(new float4(1, 0, 0, 1));
-                            colors.Add(new float4(1, 0, 0, 1));
+                            colors.Add(block.bottomColor);
+                            colors.Add(block.bottomColor);
+                            colors.Add(block.bottomColor);
+                            colors.Add(block.bottomColor);
 
                             vertexIndex += 4;
                             trianglesIndex += 6;

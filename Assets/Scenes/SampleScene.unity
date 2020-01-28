@@ -364,8 +364,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0a775c8dbe3098b4cb4a90dc03ae83f0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  chunkDistanceX: 1
-  chunkDistanceZ: 1
+  chunkDistanceX: 5
+  chunkDistanceZ: 5
 --- !u!114 &963194232
 MonoBehaviour:
   m_ObjectHideFlags: 0

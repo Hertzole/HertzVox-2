@@ -19,6 +19,20 @@ namespace Hertzole.HertzVox
         [SerializeField]
         private Texture2D eastTexture = null;
 
+        [Header("Colors")]
+        [SerializeField]
+        private Color topColor = Color.white;
+        [SerializeField]
+        private Color bottomColor = Color.white;
+        [SerializeField]
+        private Color northColor = Color.white;
+        [SerializeField]
+        private Color southColor = Color.white;
+        [SerializeField]
+        private Color westColor = Color.white;
+        [SerializeField]
+        private Color eastColor = Color.white;
+
         [SerializeField]
         [HideInInspector]
         private int topTextureId = 0;
@@ -44,6 +58,13 @@ namespace Hertzole.HertzVox
         public Texture2D SouthTexture { get { return southTexture; } }
         public Texture2D WestTexture { get { return westTexture; } }
         public Texture2D EastTexture { get { return eastTexture; } }
+
+        public Color TopColor { get { return topColor; } }
+        public Color BottomColor { get { return bottomColor; } }
+        public Color NorthColor { get { return northColor; } }
+        public Color SouthColor { get { return southColor; } }
+        public Color WestColor { get { return westColor; } }
+        public Color EastColor { get { return eastColor; } }
 
         public int TopTextureId { get { return topTextureId; } set { topTextureId = value; } }
         public int BottomTextureId { get { return bottomTextureId; } set { bottomTextureId = value; } }
