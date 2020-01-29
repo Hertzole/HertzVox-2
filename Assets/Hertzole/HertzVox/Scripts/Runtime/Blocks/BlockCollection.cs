@@ -8,11 +8,16 @@ namespace Hertzole.HertzVox
     {
         [SerializeField]
         private BaseConfig[] blocks = null;
+        [Space]
         [SerializeField]
-        private int textureSize = 8;
+        private int textureSize = 16;
         [SerializeField]
+        private Texture2D blankTexture = null;
+        [SerializeField]
+        [HideInInspector]
         private List<Texture2D> uniqueTextures = new List<Texture2D>();
         [SerializeField]
+        [HideInInspector]
         private List<int> uniqueTextureIds = new List<int>();
 
         public BaseConfig[] Blocks { get { return blocks; } }
@@ -49,7 +54,12 @@ namespace Hertzole.HertzVox
         {
             if (texture == null)
             {
-                return -1;
+                texture = blankTexture;
+
+                if (texture == null)
+                {
+                    return -1;
+                }
             }
 
             int index = textures.Count;

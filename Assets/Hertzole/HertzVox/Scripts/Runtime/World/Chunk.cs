@@ -25,6 +25,7 @@ namespace Hertzole.HertzVox
         private NativeList<int> indicies;
         private NativeList<float4> uvs;
         private NativeList<float4> colors;
+        private NativeList<float3> normals;
 
         private Mesh mesh;
 
@@ -116,11 +117,12 @@ namespace Hertzole.HertzVox
             indicies = new NativeList<int>(Allocator.TempJob);
             uvs = new NativeList<float4>(Allocator.TempJob);
             colors = new NativeList<float4>(Allocator.TempJob);
+            normals = new NativeList<float3>(Allocator.TempJob);
 
-            Chunk northChunk = VoxelWorld.Main.GetChunk(position + new int3(0, 0, 16));
-            Chunk southChunk = VoxelWorld.Main.GetChunk(position - new int3(0, 0, 16));
-            Chunk eastChunk = VoxelWorld.Main.GetChunk(position + new int3(16, 0, 0));
-            Chunk westChunk = VoxelWorld.Main.GetChunk(position - new int3(16, 0, 0));
+            Chunk northChunk = VoxelWorld.Main.GetChunk(position + new int3(0, 0, CHUNK_SIZE));
+            Chunk southChunk = VoxelWorld.Main.GetChunk(position - new int3(0, 0, CHUNK_SIZE));
+            Chunk eastChunk = VoxelWorld.Main.GetChunk(position + new int3(CHUNK_SIZE, 0, 0));
+            Chunk westChunk = VoxelWorld.Main.GetChunk(position - new int3(CHUNK_SIZE, 0, 0));
 
             BuildChunkJob job = new BuildChunkJob()
             {
@@ -133,6 +135,7 @@ namespace Hertzole.HertzVox
                 indicies = indicies,
                 uvs = uvs,
                 colors = colors,
+                normals = normals,
                 northBlocks = northChunk.blocks.GetBlocks(),
                 southBlocks = southChunk.blocks.GetBlocks(),
                 eastBlocks = eastChunk.blocks.GetBlocks(),
@@ -145,7 +148,6 @@ namespace Hertzole.HertzVox
                 southChunk.OnlyUpdateThis(true);
                 eastChunk.OnlyUpdateThis(true);
                 westChunk.OnlyUpdateThis(true);
-                //Debug.Log("Chunk " + ToString() + " updated " + northChunk.ToString());
             }
 
             if (urgentUpdate)
@@ -157,8 +159,6 @@ namespace Hertzole.HertzVox
             {
                 this.job = job.Schedule();
             }
-
-            //Debug.Log(ToString() + " updated");
         }
 
         private void OnMeshUpdated()
@@ -176,12 +176,13 @@ namespace Hertzole.HertzVox
             mesh.SetIndices<int>(indicies, MeshTopology.Triangles, 0);
             mesh.SetUVs<float4>(0, uvs);
             mesh.SetColors<float4>(colors);
-            mesh.RecalculateNormals();
+            mesh.SetNormals<float3>(normals);
 
             vertices.Dispose();
             indicies.Dispose();
             uvs.Dispose();
             colors.Dispose();
+            normals.Dispose();
         }
 
         public void Dispose(bool force = false)
@@ -194,6 +195,11 @@ namespace Hertzole.HertzVox
             }
 
             mesh = null;
+
+            if (!job.IsCompleted)
+            {
+                job.Complete();
+            }
 
             blocks.Dispose();
             if (vertices.IsCreated)
@@ -214,6 +220,11 @@ namespace Hertzole.HertzVox
             if (colors.IsCreated)
             {
                 colors.Dispose();
+            }
+
+            if (normals.IsCreated)
+            {
+                normals.Dispose();
             }
         }
 
@@ -253,13 +264,6 @@ namespace Hertzole.HertzVox
             }
 
             return chunk.position.z == position.z;
-
-            //if (obj != null && obj is Chunk chunk && position.x == chunk.position.x && position.y == chunk.position.y)
-            //{
-            //    return chunk.position.z == position.z;
-            //}
-
-            //return false;
         }
 
         public override int GetHashCode()

@@ -35,6 +35,8 @@ namespace Hertzole.HertzVox
         public NativeList<float4> uvs;
         [WriteOnly]
         public NativeList<float4> colors;
+        [WriteOnly]
+        public NativeList<float3> normals;
 
         public void Execute()
         {
@@ -193,6 +195,12 @@ namespace Hertzole.HertzVox
                             colors.Add(block.northColor);
                             colors.Add(block.northColor);
 
+                            float3 normal = new float3(0, 0, 1);
+                            normals.Add(normal);
+                            normals.Add(normal);
+                            normals.Add(normal);
+                            normals.Add(normal);
+
                             vertexIndex += 4;
                             trianglesIndex += 6;
                         }
@@ -223,6 +231,12 @@ namespace Hertzole.HertzVox
                             colors.Add(block.eastColor);
                             colors.Add(block.eastColor);
                             colors.Add(block.eastColor);
+
+                            float3 normal = new float3(1, 0, 0);
+                            normals.Add(normal);
+                            normals.Add(normal);
+                            normals.Add(normal);
+                            normals.Add(normal);
 
                             vertexIndex += 4;
                             trianglesIndex += 6;
@@ -255,6 +269,12 @@ namespace Hertzole.HertzVox
                             colors.Add(block.southColor);
                             colors.Add(block.southColor);
 
+                            float3 normal = new float3(0, 0, -1);
+                            normals.Add(normal);
+                            normals.Add(normal);
+                            normals.Add(normal);
+                            normals.Add(normal);
+
                             vertexIndex += 4;
                             trianglesIndex += 6;
                         }
@@ -285,6 +305,12 @@ namespace Hertzole.HertzVox
                             colors.Add(block.westColor);
                             colors.Add(block.westColor);
                             colors.Add(block.westColor);
+
+                            float3 normal = new float3(-1, 0, 0);
+                            normals.Add(normal);
+                            normals.Add(normal);
+                            normals.Add(normal);
+                            normals.Add(normal);
 
                             vertexIndex += 4;
                             trianglesIndex += 6;
@@ -317,6 +343,12 @@ namespace Hertzole.HertzVox
                             colors.Add(block.topColor);
                             colors.Add(block.topColor);
 
+                            float3 normal = new float3(0, 1, 0);
+                            normals.Add(normal);
+                            normals.Add(normal);
+                            normals.Add(normal);
+                            normals.Add(normal);
+
                             vertexIndex += 4;
                             trianglesIndex += 6;
                         }
@@ -347,6 +379,12 @@ namespace Hertzole.HertzVox
                             colors.Add(block.bottomColor);
                             colors.Add(block.bottomColor);
                             colors.Add(block.bottomColor);
+
+                            float3 normal = new float3(0, -1, 0);
+                            normals.Add(normal);
+                            normals.Add(normal);
+                            normals.Add(normal);
+                            normals.Add(normal);
 
                             vertexIndex += 4;
                             trianglesIndex += 6;

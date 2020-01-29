@@ -23,6 +23,12 @@ MonoBehaviour:
   southTexture: {fileID: 2800000, guid: 3579394ffadf3944da95721d9fc1c364, type: 3}
   westTexture: {fileID: 2800000, guid: 3579394ffadf3944da95721d9fc1c364, type: 3}
   eastTexture: {fileID: 2800000, guid: 3579394ffadf3944da95721d9fc1c364, type: 3}
+  topColor: {r: 1, g: 1, b: 1, a: 1}
+  bottomColor: {r: 1, g: 1, b: 1, a: 1}
+  northColor: {r: 1, g: 1, b: 1, a: 1}
+  southColor: {r: 1, g: 1, b: 1, a: 1}
+  westColor: {r: 1, g: 1, b: 1, a: 1}
+  eastColor: {r: 1, g: 1, b: 1, a: 1}
   topTextureId: 6
   bottomTextureId: 6
   northTextureId: 6
