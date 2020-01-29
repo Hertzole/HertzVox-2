@@ -29,6 +29,8 @@ namespace Hertzole.HertzVox
 
         private Mesh mesh;
 
+        public event System.Action<int3, Mesh> OnMeshCompleted;
+
         public const int CHUNK_SIZE = 16;
 
         public Chunk(int3 position)
@@ -136,18 +138,18 @@ namespace Hertzole.HertzVox
                 uvs = uvs,
                 colors = colors,
                 normals = normals,
-                northBlocks = northChunk.blocks.GetBlocks(),
-                southBlocks = southChunk.blocks.GetBlocks(),
-                eastBlocks = eastChunk.blocks.GetBlocks(),
-                westBlocks = westChunk.blocks.GetBlocks(),
+                northBlocks = northChunk == null ? BlockProvider.GetEmptyBlocks() : northChunk.blocks.GetBlocks(),
+                southBlocks = southChunk == null ? BlockProvider.GetEmptyBlocks() : southChunk.blocks.GetBlocks(),
+                eastBlocks = eastChunk == null ? BlockProvider.GetEmptyBlocks() : eastChunk.blocks.GetBlocks(),
+                westBlocks = westChunk == null ? BlockProvider.GetEmptyBlocks() : westChunk.blocks.GetBlocks(),
             };
 
             if (!onlyThis)
             {
-                northChunk.OnlyUpdateThis(true);
-                southChunk.OnlyUpdateThis(true);
-                eastChunk.OnlyUpdateThis(true);
-                westChunk.OnlyUpdateThis(true);
+                northChunk?.OnlyUpdateThis(true);
+                southChunk?.OnlyUpdateThis(true);
+                eastChunk?.OnlyUpdateThis(true);
+                westChunk?.OnlyUpdateThis(true);
             }
 
             if (urgentUpdate)
@@ -170,6 +172,19 @@ namespace Hertzole.HertzVox
                 mesh = new Mesh() { name = "Chunk" };
             }
 
+            if (vertices.Length >= 65535 && mesh.indexFormat != UnityEngine.Rendering.IndexFormat.UInt32)
+            {
+                Debug.LogWarning(this + " had too many vertices and the mesh has been converted to 32-bit format.");
+                mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+            }
+
+            //if (position.Equals(int3.zero))
+            //{
+
+
+            //    Debug.Log(vertices.Length);
+            //}
+
             mesh.Clear();
 
             mesh.SetVertices<float3>(vertices);
@@ -183,6 +198,33 @@ namespace Hertzole.HertzVox
             uvs.Dispose();
             colors.Dispose();
             normals.Dispose();
+
+            //TODO: Handle colliders much better.
+
+            NativeArray<bool> mask = new NativeArray<bool>(CHUNK_SIZE * CHUNK_SIZE, Allocator.TempJob);
+            NativeList<float3> colliderVertices = new NativeList<float3>(Allocator.TempJob);
+            NativeList<int> colliderIndicies = new NativeList<int>(Allocator.TempJob);
+
+            new BuildChunkColliderJob()
+            {
+                mask = mask,
+                blocks = blocks.GetBlocks(),
+                chunkSize = CHUNK_SIZE,
+                position = position,
+                vertices = colliderVertices,
+                indicies = colliderIndicies
+            }.Run();
+
+            Mesh colliderMesh = new Mesh();
+            colliderMesh.SetVertices<float3>(colliderVertices);
+            colliderMesh.SetIndices<int>(colliderIndicies, MeshTopology.Triangles, 0);
+            colliderMesh.RecalculateNormals();
+
+            mask.Dispose();
+            colliderVertices.Dispose();
+            colliderIndicies.Dispose();
+
+            OnMeshCompleted?.Invoke(position, colliderMesh);
         }
 
         public void Dispose(bool force = false)

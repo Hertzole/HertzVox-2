@@ -11,6 +11,8 @@ namespace Hertzole.HertzVox
         private static Dictionary<ushort, string> blockNames;
         private static Dictionary<string, ushort> blockIdentifiers;
 
+        private static NativeArray<ushort> emptyBlocks;
+
         private static bool isInitialized;
 
 #if UNITY_2019_3_OR_NEWER
@@ -35,6 +37,7 @@ namespace Hertzole.HertzVox
 
             blockIds = new NativeHashMap<ushort, Block>(0, Allocator.Persistent);
             blockNames = new Dictionary<ushort, string>();
+            emptyBlocks = new NativeArray<ushort>(Chunk.CHUNK_SIZE * Chunk.CHUNK_SIZE * Chunk.CHUNK_SIZE, Allocator.Persistent);
 
             blockIds.Add(0, new Block(0));
             blockNames.Add(0, "Air");
@@ -67,6 +70,11 @@ namespace Hertzole.HertzVox
             if (blockIds.IsCreated)
             {
                 blockIds.Dispose();
+            }
+
+            if (emptyBlocks.IsCreated)
+            {
+                emptyBlocks.Dispose();
             }
         }
 
@@ -116,6 +124,11 @@ namespace Hertzole.HertzVox
         public static NativeHashMap<ushort, Block> GetBlockMap()
         {
             return blockIds;
+        }
+
+        public static NativeArray<ushort> GetEmptyBlocks()
+        {
+            return emptyBlocks;
         }
     }
 }

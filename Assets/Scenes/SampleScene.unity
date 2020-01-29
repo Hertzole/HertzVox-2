@@ -505,8 +505,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   blockCollection: {fileID: 11400000, guid: 019fc2ba0179f5b4ba7f07477403821a, type: 2}
   chunkMaterial: {fileID: 2100000, guid: f1b1e4181ea66d8419d18098f8dcab39, type: 2}
+  chunkColliderPrefab: {fileID: 983178273809730001, guid: 7b9dd5fe9bd7df04b946624b457c6aa4,
+    type: 3}
   chunkGenerateDelay: 0.25
   clearTempOnDestroy: 1
+  minX: 0
+  maxX: 0
+  minZ: 0
+  maxZ: 0
+  maxY: 8
 --- !u!4 &1740262676
 Transform:
   m_ObjectHideFlags: 0

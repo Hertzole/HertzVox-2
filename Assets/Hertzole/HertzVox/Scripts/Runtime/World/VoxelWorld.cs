@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Text;
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -13,9 +12,23 @@ namespace Hertzole.HertzVox
         [SerializeField]
         private Material chunkMaterial = null;
         [SerializeField]
+        private MeshCollider chunkColliderPrefab = null;
+        [SerializeField]
         private float chunkGenerateDelay = 0.25f;
         [SerializeField]
         private bool clearTempOnDestroy = true;
+
+        [Header("World Size")]
+        [SerializeField]
+        private int minX = -10;
+        [SerializeField]
+        private int maxX = 10;
+        [SerializeField]
+        private int minZ = -10;
+        [SerializeField]
+        private int maxZ = 10;
+        [SerializeField]
+        private int maxY = 8;
 
         private float nextChunkGenerate;
 
@@ -35,10 +48,12 @@ namespace Hertzole.HertzVox
 
         private List<Chunk> renderChunks = new List<Chunk>();
         private List<int3> chunksToRemove = new List<int3>();
+        private List<MeshCollider> activeColliders = new List<MeshCollider>();
 
-        public int2 AtlasSize { get; private set; }
+        private Stack<MeshCollider> pooledColliders = new Stack<MeshCollider>();
 
         private Dictionary<int3, Chunk> chunks = new Dictionary<int3, Chunk>();
+        private Dictionary<int3, MeshCollider> chunkColliders = new Dictionary<int3, MeshCollider>();
         //private NativeHashMap<int3, Chunk> chunks;
 
         public static VoxelWorld Main { get; private set; }
@@ -84,7 +99,6 @@ namespace Hertzole.HertzVox
             mat.SetInt("_AtlasX", xSize);
             mat.SetInt("_AtlasY", ySize);
             mat.SetVector("_AtlasRec", new Vector4(1.0f / xSize, 1.0f / ySize));
-            AtlasSize = new int2(xSize, ySize);
 
             stone = BlockProvider.GetBlock("stone");
             dirt = BlockProvider.GetBlock("dirt");
@@ -101,6 +115,7 @@ namespace Hertzole.HertzVox
         {
             foreach (Chunk chunk in chunks.Values)
             {
+                chunk.OnMeshCompleted -= OnChunkMeshUpdated;
                 chunk.Dispose(true);
             }
 
@@ -129,21 +144,21 @@ namespace Hertzole.HertzVox
                 GenerateChunksAroundTargets();
             }
 
-            if (Input.GetKeyDown(KeyCode.F1) && chunks.TryGetValue(int3.zero, out Chunk chunk))
-            {
-                Unity.Collections.NativeList<int2> compressedBlocks = chunk.blocks.Compress();
+            //if (Input.GetKeyDown(KeyCode.F1) && chunks.TryGetValue(int3.zero, out Chunk chunk))
+            //{
+            //    Unity.Collections.NativeList<int2> compressedBlocks = chunk.blocks.Compress();
 
-                StringBuilder sb = new StringBuilder();
+            //    StringBuilder sb = new StringBuilder();
 
-                for (int i = 0; i < compressedBlocks.Length; i++)
-                {
-                    sb.Append($"[{compressedBlocks[i].x},{compressedBlocks[i].y}],");
-                }
+            //    for (int i = 0; i < compressedBlocks.Length; i++)
+            //    {
+            //        sb.Append($"[{compressedBlocks[i].x},{compressedBlocks[i].y}],");
+            //    }
 
-                compressedBlocks.Dispose();
+            //    compressedBlocks.Dispose();
 
-                Debug.Log(sb.ToString());
-            }
+            //    Debug.Log(sb.ToString());
+            //}
         }
 
         private void LateUpdate()
@@ -219,6 +234,11 @@ namespace Hertzole.HertzVox
             {
                 for (int z = zMin; z < zMax; z++)
                 {
+                    if (x < minX || x > maxX || z < minZ || z > maxZ)
+                    {
+                        continue;
+                    }
+
                     int3 chunkPosition = new int3(x * Chunk.CHUNK_SIZE, 0, z * Chunk.CHUNK_SIZE);
 
                     if (!chunks.TryGetValue(chunkPosition, out Chunk chunk))
@@ -235,6 +255,7 @@ namespace Hertzole.HertzVox
                     {
                         chunk.render = true;
                         chunk.UpdateChunkIfNeeded();
+                        chunk.OnMeshCompleted += OnChunkMeshUpdated;
                     }
                 }
             }
@@ -257,9 +278,31 @@ namespace Hertzole.HertzVox
                     {
                         Serialization.SaveChunk(chunk, true);
                     }
+                    chunk.OnMeshCompleted -= OnChunkMeshUpdated;
                     chunk.Dispose();
                     chunks.Remove(chunksToRemove[i]);
+
                 }
+
+                if (chunkColliders.TryGetValue(chunksToRemove[i], out MeshCollider collider))
+                {
+                    PoolCollider(collider);
+                    chunkColliders.Remove(chunksToRemove[i]);
+                }
+            }
+        }
+
+        private void OnChunkMeshUpdated(int3 position, Mesh mesh)
+        {
+            if (chunkColliders.TryGetValue(position, out MeshCollider collider))
+            {
+                collider.sharedMesh = mesh;
+            }
+            else
+            {
+                collider = GetCollider();
+                collider.sharedMesh = mesh;
+                chunkColliders.Add(position, collider);
             }
         }
 
@@ -276,23 +319,29 @@ namespace Hertzole.HertzVox
                 {
                     for (int z = 0; z < Chunk.CHUNK_SIZE; z++)
                     {
-                        if (y < 4)
+                        if (position.Equals(int3.zero))
                         {
-                            blocks.Set(index, stone);
-                        }
-                        else if (y >= 4 && y < 6)
-                        {
-                            blocks.Set(index, dirt);
-                        }
-                        else if (y == 6)
-                        {
-                            blocks.Set(index, grass);
+                            blocks.Set(index, leaves);
                         }
                         else
                         {
-                            blocks.Set(index, air);
+                            if (y < 4)
+                            {
+                                blocks.Set(index, stone);
+                            }
+                            else if (y >= 4 && y < 6)
+                            {
+                                blocks.Set(index, dirt);
+                            }
+                            else if (y == 6)
+                            {
+                                blocks.Set(index, grass);
+                            }
+                            else
+                            {
+                                blocks.Set(index, air);
+                            }
                         }
-
                         index++;
                     }
                 }
@@ -301,6 +350,20 @@ namespace Hertzole.HertzVox
             chunk.blocks = blocks;
 
             return chunk;
+        }
+
+        private MeshCollider GetCollider()
+        {
+            MeshCollider collider = pooledColliders.Count > 0 ? pooledColliders.Pop() : Instantiate(chunkColliderPrefab, transform);
+            collider.gameObject.SetActive(true);
+            return collider;
+        }
+
+        private void PoolCollider(MeshCollider collider)
+        {
+            collider.gameObject.SetActive(false);
+            activeColliders.Remove(collider);
+            pooledColliders.Push(collider);
         }
 
         public void RegisterLoader(VoxelLoader loader)
