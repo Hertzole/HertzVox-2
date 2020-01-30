@@ -14,7 +14,6 @@ namespace Hertzole.HertzVox
         private bool updatingMesh;
         private bool urgentUpdate;
         private bool onlyThis;
-        private bool isEmpty;
         public bool changed;
         public bool render;
 
@@ -30,7 +29,7 @@ namespace Hertzole.HertzVox
 
         private Mesh mesh;
 
-        public event System.Action<int3, Mesh> OnMeshCompleted;
+        public static event System.Action<int3, Mesh> OnMeshCompleted;
 
         public const int CHUNK_SIZE = 16;
 
@@ -112,14 +111,6 @@ namespace Hertzole.HertzVox
                 return;
             }
 
-            bool blocksEmpty = blocks.IsEmpty();
-
-            if (blocksEmpty && blocksEmpty == isEmpty)
-            {
-                return;
-            }
-
-            isEmpty = blocksEmpty;
             frameCount = 0;
             updatingMesh = true;
             dirty = false;
@@ -187,13 +178,6 @@ namespace Hertzole.HertzVox
                 mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
             }
 
-            //if (position.Equals(int3.zero))
-            //{
-
-
-            //    Debug.Log(vertices.Length);
-            //}
-
             mesh.Clear();
 
             mesh.SetVertices<float3>(vertices);
@@ -214,15 +198,18 @@ namespace Hertzole.HertzVox
             NativeList<float3> colliderVertices = new NativeList<float3>(Allocator.TempJob);
             NativeList<int> colliderIndicies = new NativeList<int>(Allocator.TempJob);
 
-            new BuildChunkColliderJob()
+            JobHandle colliderJob = new BuildChunkColliderJob()
             {
                 mask = mask,
                 blocks = blocks.GetBlocks(),
                 chunkSize = CHUNK_SIZE,
                 position = position,
                 vertices = colliderVertices,
-                indicies = colliderIndicies
-            }.Run();
+                indicies = colliderIndicies,
+                blockMap = BlockProvider.GetBlockMap()
+            }.Schedule();
+
+            colliderJob.Complete();
 
             Mesh colliderMesh = new Mesh();
             colliderMesh.SetVertices<float3>(colliderVertices);

@@ -409,9 +409,20 @@ namespace Hertzole.HertzVox
             {
                 return true;
             }
-            else if (block.transparent)
+            else if (block.transparent && !block.connectToSame)
             {
                 return true;
+            }
+            else if (block.transparent && block.connectToSame)
+            {
+                if (block.id == currentBlock.id)
+                {
+                    return false;
+                }
+                else
+                {
+                    return true;
+                }
             }
 
             return false;
@@ -420,11 +431,6 @@ namespace Hertzole.HertzVox
         private int GetIndex1DFrom3D(int x, int y, int z, int size)
         {
             return x * size * size + y * size + z;
-        }
-
-        private bool IsWithinBounds(int3 position, int size)
-        {
-            return size > position.x && size > position.y && size > position.z && position.x >= 0 && position.y >= 0 && position.z >= 0;
         }
     }
 }

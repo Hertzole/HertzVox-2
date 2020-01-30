@@ -54,19 +54,6 @@ namespace Hertzole.HertzVox
             blocks.CopyFrom(array);
         }
 
-        public bool IsEmpty()
-        {
-            for (int i = 0; i < blocks.Length; i++)
-            {
-                if (blocks[i] != 0)
-                {
-                    return false;
-                }
-            }
-
-            return true;
-        }
-
         public void Dispose()
         {
             if (blocks.IsCreated)

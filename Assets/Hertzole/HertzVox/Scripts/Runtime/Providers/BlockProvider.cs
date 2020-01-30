@@ -39,7 +39,7 @@ namespace Hertzole.HertzVox
             blockNames = new Dictionary<ushort, string>();
             emptyBlocks = new NativeArray<ushort>(Chunk.CHUNK_SIZE * Chunk.CHUNK_SIZE * Chunk.CHUNK_SIZE, Allocator.Persistent);
 
-            blockIds.Add(0, new Block(0));
+            blockIds.Add(0, new Block(0) { canCollide = false });
             blockNames.Add(0, "Air");
             blockIdentifiers.Add("air", 0);
 

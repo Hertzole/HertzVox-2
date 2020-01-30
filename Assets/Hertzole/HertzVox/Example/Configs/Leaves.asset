@@ -15,14 +15,21 @@ MonoBehaviour:
   blockName: Leaves
   blockID: 5
   blockIdentifier: leaves
-  solid: 1
+  canCollide: 1
   transparent: 1
+  connectToSame: 0
   topTexture: {fileID: 2800000, guid: 24d6fe198ce1b6e4db4212a375510617, type: 3}
   bottomTexture: {fileID: 2800000, guid: 24d6fe198ce1b6e4db4212a375510617, type: 3}
   northTexture: {fileID: 2800000, guid: 24d6fe198ce1b6e4db4212a375510617, type: 3}
   southTexture: {fileID: 2800000, guid: 24d6fe198ce1b6e4db4212a375510617, type: 3}
   westTexture: {fileID: 2800000, guid: 24d6fe198ce1b6e4db4212a375510617, type: 3}
   eastTexture: {fileID: 2800000, guid: 24d6fe198ce1b6e4db4212a375510617, type: 3}
+  topColor: {r: 1, g: 1, b: 1, a: 1}
+  bottomColor: {r: 1, g: 1, b: 1, a: 1}
+  northColor: {r: 1, g: 1, b: 1, a: 1}
+  southColor: {r: 1, g: 1, b: 1, a: 1}
+  westColor: {r: 1, g: 1, b: 1, a: 1}
+  eastColor: {r: 1, g: 1, b: 1, a: 1}
   topTextureId: 7
   bottomTextureId: 7
   northTextureId: 7

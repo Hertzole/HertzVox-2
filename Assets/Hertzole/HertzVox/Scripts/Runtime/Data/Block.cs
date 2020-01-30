@@ -33,9 +33,11 @@ namespace Hertzole.HertzVox
         internal float4 westColor;
 
         [NonSerialized]
-        public bool solid;
+        public bool canCollide;
         [NonSerialized]
         public bool transparent;
+        [NonSerialized]
+        public bool connectToSame;
 
         public Block(ushort id)
         {
@@ -53,8 +55,9 @@ namespace Hertzole.HertzVox
             southColor = topColor;
             eastColor = topColor;
             westColor = topColor;
-            solid = true;
+            canCollide = true;
             transparent = false;
+            connectToSame = false;
         }
 
         public Block(ushort id, int topTexture, int bottomTexture, int northTexture, int southTexture, int eastTexture, int westTexture) : this(id)
@@ -71,8 +74,9 @@ namespace Hertzole.HertzVox
         {
             this.id = id;
 
-            solid = config.Solid;
+            canCollide = config.CanCollide;
             transparent = config.Transparent;
+            connectToSame = config.ConnectToSame;
 
             topTexture = 0;
             bottomTexture = 0;

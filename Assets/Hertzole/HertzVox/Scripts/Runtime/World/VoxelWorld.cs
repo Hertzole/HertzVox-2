@@ -74,6 +74,13 @@ namespace Hertzole.HertzVox
             {
                 Main = this;
             }
+
+            Chunk.OnMeshCompleted += OnChunkMeshUpdated;
+        }
+
+        private void OnDisable()
+        {
+            Chunk.OnMeshCompleted -= OnChunkMeshUpdated;
         }
 
         private void Awake()
@@ -113,7 +120,6 @@ namespace Hertzole.HertzVox
         {
             foreach (Chunk chunk in chunks.Values)
             {
-                chunk.OnMeshCompleted -= OnChunkMeshUpdated;
                 chunk.Dispose(true);
             }
 
@@ -294,15 +300,13 @@ namespace Hertzole.HertzVox
                             continue;
                         }
 
-                        Profiler.BeginSample("Create position");
                         int3 chunkPosition = new int3(x * Chunk.CHUNK_SIZE, y * Chunk.CHUNK_SIZE, z * Chunk.CHUNK_SIZE);
-                        Profiler.EndSample();
 
                         if (!chunks.TryGetValue(chunkPosition, out Chunk chunk))
                         {
                             chunk = CreateChunk(chunkPosition);
                             chunks.Add(chunkPosition, chunk);
-                            Profiler.BeginSample("Serialize chunk");
+                            Profiler.BeginSample("Load chunk");
                             Serialization.LoadChunk(chunk, true);
                             Profiler.EndSample();
                         }
@@ -315,7 +319,6 @@ namespace Hertzole.HertzVox
                         {
                             chunk.render = true;
                             chunk.UpdateChunkIfNeeded();
-                            chunk.OnMeshCompleted += OnChunkMeshUpdated;
                         }
                         Profiler.EndSample();
                     }
@@ -344,7 +347,6 @@ namespace Hertzole.HertzVox
                     {
                         Serialization.SaveChunk(chunk, true);
                     }
-                    chunk.OnMeshCompleted -= OnChunkMeshUpdated;
                     chunk.Dispose();
                     chunks.Remove(chunksToRemove[i]);
 

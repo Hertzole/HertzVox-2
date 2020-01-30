@@ -514,7 +514,7 @@ MonoBehaviour:
   maxX: 20
   minZ: -20
   maxZ: 20
-  maxY: 1
+  maxY: 8
 --- !u!4 &1740262676
 Transform:
   m_ObjectHideFlags: 0

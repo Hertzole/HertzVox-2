@@ -14,6 +14,8 @@ namespace Hertzole.HertzVox
         public NativeArray<ushort> blocks;
         [ReadOnly]
         public int chunkSize;
+        [ReadOnly]
+        public NativeHashMap<ushort, Block> blockMap;
 
         //[WriteOnly]
         public NativeList<float3> vertices;
@@ -169,7 +171,7 @@ namespace Hertzole.HertzVox
 
         private bool IsBlockAt(int x, int y, int z)
         {
-            return blocks[GetIndex1DFrom3D(x, y, z, chunkSize)] == 0;
+            return !blockMap[blocks[GetIndex1DFrom3D(x, y, z, chunkSize)]].canCollide;
         }
     }
 }
