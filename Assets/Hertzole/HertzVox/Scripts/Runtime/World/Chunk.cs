@@ -14,6 +14,7 @@ namespace Hertzole.HertzVox
         private bool updatingMesh;
         private bool urgentUpdate;
         private bool onlyThis;
+        private bool isEmpty;
         public bool changed;
         public bool render;
 
@@ -111,6 +112,14 @@ namespace Hertzole.HertzVox
                 return;
             }
 
+            bool blocksEmpty = blocks.IsEmpty();
+
+            if (blocksEmpty && blocksEmpty == isEmpty)
+            {
+                return;
+            }
+
+            isEmpty = blocksEmpty;
             frameCount = 0;
             updatingMesh = true;
             dirty = false;
@@ -290,6 +299,26 @@ namespace Hertzole.HertzVox
         public void SetBlockRaw(int3 position, Block block)
         {
             SetBlockRaw(position.x, position.y, position.z, block);
+        }
+
+        public void SetRange(int3 from, int3 to, Block block)
+        {
+            SetRangeRaw(from, to, block);
+            UpdateChunk();
+        }
+
+        public void SetRangeRaw(int3 from, int3 to, Block block)
+        {
+            for (int x = from.x; x <= to.x; x++)
+            {
+                for (int y = from.y; y <= to.y; y++)
+                {
+                    for (int z = from.z; z <= to.z; z++)
+                    {
+                        SetBlockRaw(x, y, z, block);
+                    }
+                }
+            }
         }
 
         public override bool Equals(object obj)

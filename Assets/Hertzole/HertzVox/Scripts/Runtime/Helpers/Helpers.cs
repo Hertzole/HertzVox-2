@@ -6,6 +6,7 @@ namespace Hertzole.HertzVox
 {
     public static class Helpers
     {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int3 ContainingChunkPosition(int3 position)
         {
             int3 p;
@@ -13,6 +14,16 @@ namespace Hertzole.HertzVox
             p.y = Mathf.FloorToInt(position.y / (float)Chunk.CHUNK_SIZE) * Chunk.CHUNK_SIZE;
             p.z = Mathf.FloorToInt(position.z / (float)Chunk.CHUNK_SIZE) * Chunk.CHUNK_SIZE;
 
+            return p;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int3 ContainingChunkPosition(int x, int y, int z)
+        {
+            int3 p;
+            p.x = Mathf.FloorToInt(x / (float)Chunk.CHUNK_SIZE) * Chunk.CHUNK_SIZE;
+            p.y = Mathf.FloorToInt(y / (float)Chunk.CHUNK_SIZE) * Chunk.CHUNK_SIZE;
+            p.z = Mathf.FloorToInt(z / (float)Chunk.CHUNK_SIZE) * Chunk.CHUNK_SIZE;
             return p;
         }
 

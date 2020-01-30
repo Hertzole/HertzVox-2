@@ -484,6 +484,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1740262676}
   - component: {fileID: 1740262675}
+  - component: {fileID: 1740262677}
   m_Layer: 0
   m_Name: World
   m_TagString: Untagged
@@ -509,11 +510,11 @@ MonoBehaviour:
     type: 3}
   chunkGenerateDelay: 0.25
   clearTempOnDestroy: 1
-  minX: 0
-  maxX: 0
-  minZ: 0
-  maxZ: 0
-  maxY: 8
+  minX: -20
+  maxX: 20
+  minZ: -20
+  maxZ: 20
+  maxY: 1
 --- !u!4 &1740262676
 Transform:
   m_ObjectHideFlags: 0
@@ -528,3 +529,15 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1740262677
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1740262674}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 51f583f8532332f48903ca3be94d3f3f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 

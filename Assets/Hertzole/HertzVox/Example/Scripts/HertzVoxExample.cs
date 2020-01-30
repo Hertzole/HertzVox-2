@@ -4,7 +4,7 @@ namespace Hertzole.HertzVox.Example
 {
     public class HertzVoxExample : MonoBehaviour
     {
-        private string[] availableBlocks = new string[] { "air", "stone", "dirt", "grass", "log", "planks", "leaves", "colored" };
+        private string[] availableBlocks = new string[] { "air", "stone", "dirt", "grass", "log", "planks", "leaves", "colored", "glass" };
         private int selectedBlock = 0;
 
         // Update is called once per frame

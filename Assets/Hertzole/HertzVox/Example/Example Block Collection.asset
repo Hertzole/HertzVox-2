@@ -20,6 +20,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: badd2812fba75604b8226882e881c5e9, type: 2}
   - {fileID: 11400000, guid: c8bc58c07a7fd714d9ce42b371fa98d0, type: 2}
   - {fileID: 11400000, guid: 16d1f2416085e774eb81741797bb928b, type: 2}
+  - {fileID: 11400000, guid: 402891f9e0b6ecf48b1662a78cf76961, type: 2}
   textureSize: 8
   blankTexture: {fileID: 2800000, guid: 3569c4b176115b44eb39b21bcd79b76d, type: 3}
   uniqueTextures:
@@ -32,4 +33,5 @@ MonoBehaviour:
   - {fileID: 2800000, guid: 3579394ffadf3944da95721d9fc1c364, type: 3}
   - {fileID: 2800000, guid: 24d6fe198ce1b6e4db4212a375510617, type: 3}
   - {fileID: 2800000, guid: 3569c4b176115b44eb39b21bcd79b76d, type: 3}
-  uniqueTextureIds: 000000000100000002000000030000000400000005000000060000000700000008000000
+  - {fileID: 2800000, guid: 4ee7829ea7aecfc47bc9f601a773dfba, type: 3}
+  uniqueTextureIds: 00000000010000000200000003000000040000000500000006000000070000000800000009000000

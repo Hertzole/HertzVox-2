@@ -1,6 +1,8 @@
 ﻿using System.Collections.Generic;
+using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
+using UnityEngine.Profiling;
 
 namespace Hertzole.HertzVox
 {
@@ -32,22 +34,16 @@ namespace Hertzole.HertzVox
 
         private float nextChunkGenerate;
 
-        private Block stone;
-        private Block dirt;
-        private Block grass;
-        private Block air;
-        private Block logs;
-        private Block planks;
-        private Block leaves;
-
         private int3 lastLoaderPosition;
 
         private Material mat;
 
         private VoxelLoader loader;
 
-        private List<Chunk> renderChunks = new List<Chunk>();
-        private List<int3> chunksToRemove = new List<int3>();
+        private IVoxGeneration generator;
+
+        private NativeList<int3> renderChunks;
+        private NativeList<int3> chunksToRemove;
         private List<MeshCollider> activeColliders = new List<MeshCollider>();
 
         private Stack<MeshCollider> pooledColliders = new Stack<MeshCollider>();
@@ -100,13 +96,15 @@ namespace Hertzole.HertzVox
             mat.SetInt("_AtlasY", ySize);
             mat.SetVector("_AtlasRec", new Vector4(1.0f / xSize, 1.0f / ySize));
 
-            stone = BlockProvider.GetBlock("stone");
-            dirt = BlockProvider.GetBlock("dirt");
-            grass = BlockProvider.GetBlock("grass");
-            air = BlockProvider.GetBlock("air");
-            logs = BlockProvider.GetBlock("log");
-            planks = BlockProvider.GetBlock("planks");
-            leaves = BlockProvider.GetBlock("leaves");
+            renderChunks = new NativeList<int3>(Allocator.Persistent);
+            chunksToRemove = new NativeList<int3>(Allocator.Persistent);
+
+            generator = GetComponent<IVoxGeneration>();
+
+            if (generator == null)
+            {
+                Debug.LogWarning("There's no voxel generator (IVoxGenerator) attached to Voxel World " + gameObject.name + ". No chunks will show up.");
+            }
 
             //chunks = new NativeHashMap<int3, Chunk>(0, Allocator.Persistent);
         }
@@ -124,6 +122,9 @@ namespace Hertzole.HertzVox
 
             Destroy(mat);
 
+            renderChunks.Dispose();
+            chunksToRemove.Dispose();
+
             if (clearTempOnDestroy)
             {
                 Serialization.ClearTemp();
@@ -132,10 +133,10 @@ namespace Hertzole.HertzVox
 
         private void Update()
         {
-            for (int i = 0; i < renderChunks.Count; i++)
+            for (int i = 0; i < renderChunks.Length; i++)
             {
-                renderChunks[i].Draw(mat);
-                renderChunks[i].Update();
+                chunks[renderChunks[i]].Draw(mat);
+                chunks[renderChunks[i]].Update();
             }
 
             if (Time.unscaledTime >= nextChunkGenerate)
@@ -143,29 +144,13 @@ namespace Hertzole.HertzVox
                 nextChunkGenerate = Time.unscaledTime + chunkGenerateDelay;
                 GenerateChunksAroundTargets();
             }
-
-            //if (Input.GetKeyDown(KeyCode.F1) && chunks.TryGetValue(int3.zero, out Chunk chunk))
-            //{
-            //    Unity.Collections.NativeList<int2> compressedBlocks = chunk.blocks.Compress();
-
-            //    StringBuilder sb = new StringBuilder();
-
-            //    for (int i = 0; i < compressedBlocks.Length; i++)
-            //    {
-            //        sb.Append($"[{compressedBlocks[i].x},{compressedBlocks[i].y}],");
-            //    }
-
-            //    compressedBlocks.Dispose();
-
-            //    Debug.Log(sb.ToString());
-            //}
         }
 
         private void LateUpdate()
         {
-            for (int i = 0; i < renderChunks.Count; i++)
+            for (int i = 0; i < renderChunks.Length; i++)
             {
-                renderChunks[i].LateUpdate();
+                chunks[renderChunks[i]].LateUpdate();
             }
         }
 
@@ -200,6 +185,73 @@ namespace Hertzole.HertzVox
             }
         }
 
+        public void SetBlocks(int3 start, int3 end, Block block)
+        {
+            SetBlocks(start.x, start.y, start.z, end.x, end.y, end.z, block);
+        }
+
+        public void SetBlocks(int fromX, int fromY, int fromZ, int toX, int toY, int toZ, Block block)
+        {
+            FixValues(ref fromX, ref toX);
+            FixValues(ref fromY, ref toY);
+            FixValues(ref fromZ, ref toZ);
+
+            int3 chunkFrom = Helpers.ContainingChunkPosition(fromX, fromY, fromZ);
+            int3 chunkTo = Helpers.ContainingChunkPosition(toX, toY, toZ);
+
+            int minY = Helpers.Mod(fromY, Chunk.CHUNK_SIZE);
+
+            for (int cy = chunkFrom.y; cy <= chunkTo.y; cy += Chunk.CHUNK_SIZE, minY = 0)
+            {
+                int maxY = math.min(toY - cy, Chunk.CHUNK_SIZE - 1);
+                int minZ = Helpers.Mod(fromZ, Chunk.CHUNK_SIZE);
+
+                for (int cz = chunkFrom.z; cz <= chunkTo.z; cz += Chunk.CHUNK_SIZE, minZ = 0)
+                {
+                    int maxZ = math.min(toZ - cz, Chunk.CHUNK_SIZE - 1);
+                    int minX = Helpers.Mod(fromX, Chunk.CHUNK_SIZE);
+
+                    for (int cx = chunkFrom.x; cx <= chunkTo.x; cx += Chunk.CHUNK_SIZE, minX = 0)
+                    {
+                        bool ghostChunk = false;
+                        int3 chunkPosition = new int3(cx, cy, cz);
+                        Chunk chunk = GetChunk(chunkPosition);
+                        if (chunk == null)
+                        {
+                            ghostChunk = true;
+                            chunk = CreateChunk(chunkPosition);
+                        }
+
+                        int maxX = math.min(toX - cx, Chunk.CHUNK_SIZE - 1);
+
+                        int3 from = new int3(minX, minY, minZ);
+                        int3 to = new int3(maxX, maxY, maxZ);
+
+                        chunk.SetRangeRaw(from, to, block);
+                        if (!ghostChunk)
+                        {
+                            chunk.UpdateChunk();
+                        }
+                        else
+                        {
+                            Serialization.SaveChunk(chunk, true);
+                            chunk.Dispose();
+                        }
+                    }
+                }
+            }
+        }
+
+        private void FixValues(ref int start, ref int end)
+        {
+            if (start > end)
+            {
+                int temp = start;
+                start = end;
+                end = temp;
+            }
+        }
+
         public Chunk GetChunk(int3 position)
         {
             //Assert.IsTrue(Helpers.ContainingChunkPosition(ref position).Equals(position));
@@ -230,47 +282,61 @@ namespace Hertzole.HertzVox
             int xMax = loader.ChunkDistanceX + targetPosition.x + 2;
             int zMax = loader.ChunkDistanceZ + targetPosition.z + 2;
 
+            Profiler.BeginSample("Create chunk region");
             for (int x = xMin; x < xMax; x++)
             {
                 for (int z = zMin; z < zMax; z++)
                 {
-                    if (x < minX || x > maxX || z < minZ || z > maxZ)
+                    for (int y = 0; y < maxY; y++)
                     {
-                        continue;
-                    }
+                        if (x < minX || x > maxX || z < minZ || z > maxZ)
+                        {
+                            continue;
+                        }
 
-                    int3 chunkPosition = new int3(x * Chunk.CHUNK_SIZE, 0, z * Chunk.CHUNK_SIZE);
+                        Profiler.BeginSample("Create position");
+                        int3 chunkPosition = new int3(x * Chunk.CHUNK_SIZE, y * Chunk.CHUNK_SIZE, z * Chunk.CHUNK_SIZE);
+                        Profiler.EndSample();
 
-                    if (!chunks.TryGetValue(chunkPosition, out Chunk chunk))
-                    {
-                        chunk = CreateChunk(chunkPosition);
-                        chunks.Add(chunkPosition, chunk);
-                        Serialization.LoadChunk(chunk, true);
-                    }
+                        if (!chunks.TryGetValue(chunkPosition, out Chunk chunk))
+                        {
+                            chunk = CreateChunk(chunkPosition);
+                            chunks.Add(chunkPosition, chunk);
+                            Profiler.BeginSample("Serialize chunk");
+                            Serialization.LoadChunk(chunk, true);
+                            Profiler.EndSample();
+                        }
 
-                    renderChunks.Add(chunk);
-                    chunk.render = false;
+                        renderChunks.Add(chunkPosition);
+                        chunk.render = false;
 
-                    if (x != xMin && z != zMin && x != xMax - 1 && z != zMax - 1)
-                    {
-                        chunk.render = true;
-                        chunk.UpdateChunkIfNeeded();
-                        chunk.OnMeshCompleted += OnChunkMeshUpdated;
+                        Profiler.BeginSample("Update chunks");
+                        if (x != xMin && z != zMin && x != xMax - 1 && z != zMax - 1)
+                        {
+                            chunk.render = true;
+                            chunk.UpdateChunkIfNeeded();
+                            chunk.OnMeshCompleted += OnChunkMeshUpdated;
+                        }
+                        Profiler.EndSample();
                     }
                 }
             }
+            Profiler.EndSample();
 
+            Profiler.BeginSample("Remove chunks stage 1");
             chunksToRemove.Clear();
-            foreach (KeyValuePair<int3, Chunk> chunk in chunks)
+            foreach (int3 chunk in chunks.Keys)
             {
-                if (!renderChunks.Contains(chunk.Value))
+                if (!renderChunks.Contains(chunk))
                 {
-                    chunksToRemove.Add(chunk.Key);
+                    chunksToRemove.Add(chunk);
                 }
             }
+            Profiler.EndSample();
 
+            Profiler.BeginSample("Remove chunks stage 2");
             //TODO: Pool chunks in memory pool.
-            for (int i = 0; i < chunksToRemove.Count; i++)
+            for (int i = 0; i < chunksToRemove.Length; i++)
             {
                 if (chunks.TryGetValue(chunksToRemove[i], out Chunk chunk))
                 {
@@ -290,6 +356,7 @@ namespace Hertzole.HertzVox
                     chunkColliders.Remove(chunksToRemove[i]);
                 }
             }
+            Profiler.EndSample();
         }
 
         private void OnChunkMeshUpdated(int3 position, Mesh mesh)
@@ -309,45 +376,13 @@ namespace Hertzole.HertzVox
         private Chunk CreateChunk(int3 position)
         {
             Chunk chunk = new Chunk(position);
-            ChunkBlocks blocks = new ChunkBlocks(Chunk.CHUNK_SIZE);
+            ChunkBlocks chunkBlocks = new ChunkBlocks(Chunk.CHUNK_SIZE);
+            chunk.blocks = chunkBlocks;
 
-            int index = 0;
-
-            for (int x = 0; x < Chunk.CHUNK_SIZE; x++)
+            if (generator != null)
             {
-                for (int y = 0; y < Chunk.CHUNK_SIZE; y++)
-                {
-                    for (int z = 0; z < Chunk.CHUNK_SIZE; z++)
-                    {
-                        if (position.Equals(int3.zero))
-                        {
-                            blocks.Set(index, leaves);
-                        }
-                        else
-                        {
-                            if (y < 4)
-                            {
-                                blocks.Set(index, stone);
-                            }
-                            else if (y >= 4 && y < 6)
-                            {
-                                blocks.Set(index, dirt);
-                            }
-                            else if (y == 6)
-                            {
-                                blocks.Set(index, grass);
-                            }
-                            else
-                            {
-                                blocks.Set(index, air);
-                            }
-                        }
-                        index++;
-                    }
-                }
+                generator.GenerateChunk(chunk, position);
             }
-
-            chunk.blocks = blocks;
 
             return chunk;
         }
@@ -374,12 +409,6 @@ namespace Hertzole.HertzVox
         public void UnregisterLoader(VoxelLoader loader)
         {
             this.loader = null;
-        }
-
-        private void OnGUI()
-        {
-            GUILayout.Box("Chunks: " + chunks.Count);
-            GUILayout.Box("Render Chunks: " + renderChunks.Count);
         }
 
         private void OnDrawGizmos()
