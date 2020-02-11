@@ -1,9 +1,11 @@
-﻿using Unity.Mathematics;
+﻿using Unity.Collections;
+using Unity.Jobs;
+using Unity.Mathematics;
 
 namespace Hertzole.HertzVox
 {
     public interface IVoxGeneration
     {
-        void GenerateChunk(Chunk chunk, int3 position);
+        JobHandle GenerateChunk(NativeArray<ushort> blocks, int3 position);
     }
 }

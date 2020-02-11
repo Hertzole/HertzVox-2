@@ -41,11 +41,9 @@ namespace Hertzole.HertzVox
 				return;
 			}
 
-			MakeSureSaveLocationExists();
-
 			NativeList<int2> blocks = chunk.blocks.Compress();
 
-			string path = GetChunkPath(chunk, temporary);
+			string path = SaveFile(chunk.position, temporary);
 
 			using (BinaryWriter w = new BinaryWriter(File.Open(path, FileMode.OpenOrCreate)))
 			{
@@ -77,9 +75,7 @@ namespace Hertzole.HertzVox
 				return false;
 			}
 
-			MakeSureSaveLocationExists();
-
-			string path = GetChunkPath(chunk, temporary);
+			string path = SaveFile(chunk.position, temporary);
 
 			if (File.Exists(path))
 			{
@@ -122,22 +118,28 @@ namespace Hertzole.HertzVox
 			}
 		}
 
-		private static void MakeSureSaveLocationExists()
+		private static string SaveFile(int3 position, bool temporary)
 		{
-			if (!Directory.Exists(SaveLocation))
-			{
-				Directory.CreateDirectory(SaveLocation);
-			}
-
-			if (!Directory.Exists(TempSaveLocation))
-			{
-				Directory.CreateDirectory(TempSaveLocation);
-			}
+			string save = GetSaveLocation(temporary);
+			save += FileName(position);
+			return save;
 		}
 
-		private static string GetChunkPath(Chunk chunk, bool temporary)
+		private static string FileName(int3 position)
 		{
-			return (temporary ? TempSaveLocation : SaveLocation) + $"/{chunk.position.x},{chunk.position.y},{chunk.position.z}.bin";
+			return position.x + "," + position.y + "," + position.z + ".bin";
+		}
+
+		private static string GetSaveLocation(bool temporary)
+		{
+			string saveLocation = (temporary ? TempSaveLocation : SaveLocation) + "/";
+
+			if (!Directory.Exists(saveLocation))
+			{
+				Directory.CreateDirectory(saveLocation);
+			}
+
+			return saveLocation;
 		}
 	}
 }

@@ -13,6 +13,7 @@ namespace Hertzole.HertzVox
         [ReadOnly]
         public int size;
         [ReadOnly]
+        [DeallocateOnJobCompletion]
         public NativeArray<ushort> blocks;
         [ReadOnly]
         public NativeHashMap<ushort, Block> blockMap;
@@ -160,13 +161,19 @@ namespace Hertzole.HertzVox
                 {
                     for (int z = 0; z < size; z++)
                     {
-                        if (faces[index] == 0) // No face.
+                        //if (faces[index] == 0) // No face.
+                        //{
+                        //    index++;
+                        //    continue;
+                        //}
+
+                        Block block = blockMap[blocks[index]];
+
+                        if (block.id == 0)
                         {
                             index++;
                             continue;
                         }
-
-                        Block block = blockMap[blocks[index]];
 
                         if ((faces[index] & (byte)Direction.North) != 0)
                         {

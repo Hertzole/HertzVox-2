@@ -1,13 +1,16 @@
-﻿using System.Collections.Generic;
+﻿using Priority_Queue;
+using System.Collections.Generic;
 using Unity.Collections;
+using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
+using UnityEngine.Assertions;
 using UnityEngine.Profiling;
 
 namespace Hertzole.HertzVox
 {
     [DefaultExecutionOrder(-50)]
-    public class VoxelWorld : MonoBehaviour
+    public partial class VoxelWorld : MonoBehaviour
     {
         [SerializeField]
         private BlockCollection blockCollection = null;
@@ -32,6 +35,14 @@ namespace Hertzole.HertzVox
         [SerializeField]
         private int maxY = 8;
 
+        [Header("Queue Sizes")]
+        [SerializeField]
+        private int maxGenerateJobs = 10;
+        [SerializeField]
+        private int maxRenderJobs = 10;
+        [SerializeField]
+        private int maxColliderJobs = 10;
+
         private float nextChunkGenerate;
 
         private int3 lastLoaderPosition;
@@ -42,6 +53,14 @@ namespace Hertzole.HertzVox
 
         private IVoxGeneration generator;
 
+        private FastPriorityQueue<ChunkNode> generateQueue = new FastPriorityQueue<ChunkNode>(10000);
+        private FastPriorityQueue<ChunkNode> renderQueue = new FastPriorityQueue<ChunkNode>(10000);
+        private FastPriorityQueue<ChunkNode> colliderQueue = new FastPriorityQueue<ChunkNode>(10000);
+
+        private NativeHashMap<int3, ChunkJobData> generateJobs;
+        private NativeHashMap<int3, ChunkJobData> renderJobs;
+        private NativeHashMap<int3, ChunkJobData> colliderJobs;
+
         private NativeList<int3> renderChunks;
         private NativeList<int3> chunksToRemove;
         private List<MeshCollider> activeColliders = new List<MeshCollider>();
@@ -50,7 +69,6 @@ namespace Hertzole.HertzVox
 
         private Dictionary<int3, Chunk> chunks = new Dictionary<int3, Chunk>();
         private Dictionary<int3, MeshCollider> chunkColliders = new Dictionary<int3, MeshCollider>();
-        //private NativeHashMap<int3, Chunk> chunks;
 
         public static VoxelWorld Main { get; private set; }
 
@@ -74,13 +92,6 @@ namespace Hertzole.HertzVox
             {
                 Main = this;
             }
-
-            Chunk.OnMeshCompleted += OnChunkMeshUpdated;
-        }
-
-        private void OnDisable()
-        {
-            Chunk.OnMeshCompleted -= OnChunkMeshUpdated;
         }
 
         private void Awake()
@@ -103,6 +114,10 @@ namespace Hertzole.HertzVox
             mat.SetInt("_AtlasY", ySize);
             mat.SetVector("_AtlasRec", new Vector4(1.0f / xSize, 1.0f / ySize));
 
+            generateJobs = new NativeHashMap<int3, ChunkJobData>(0, Allocator.Persistent);
+            renderJobs = new NativeHashMap<int3, ChunkJobData>(0, Allocator.Persistent);
+            colliderJobs = new NativeHashMap<int3, ChunkJobData>(0, Allocator.Persistent);
+
             renderChunks = new NativeList<int3>(Allocator.Persistent);
             chunksToRemove = new NativeList<int3>(Allocator.Persistent);
 
@@ -112,12 +127,14 @@ namespace Hertzole.HertzVox
             {
                 Debug.LogWarning("There's no voxel generator (IVoxGenerator) attached to Voxel World " + gameObject.name + ". No chunks will show up.");
             }
-
-            //chunks = new NativeHashMap<int3, Chunk>(0, Allocator.Persistent);
         }
 
         private void OnDestroy()
         {
+            DisposeJobList(generateJobs);
+            DisposeJobList(renderJobs);
+            DisposeJobList(colliderJobs);
+
             foreach (Chunk chunk in chunks.Values)
             {
                 chunk.Dispose(true);
@@ -128,6 +145,10 @@ namespace Hertzole.HertzVox
 
             Destroy(mat);
 
+            generateJobs.Dispose();
+            renderJobs.Dispose();
+            colliderJobs.Dispose();
+
             renderChunks.Dispose();
             chunksToRemove.Dispose();
 
@@ -137,12 +158,22 @@ namespace Hertzole.HertzVox
             }
         }
 
+        private void DisposeJobList(NativeHashMap<int3, ChunkJobData> list)
+        {
+            NativeArray<ChunkJobData> jobs = list.GetValueArray(Allocator.Temp);
+            for (int i = 0; i < jobs.Length; i++)
+            {
+                jobs[i].job.Complete();
+            }
+
+            jobs.Dispose();
+        }
+
         private void Update()
         {
             for (int i = 0; i < renderChunks.Length; i++)
             {
                 chunks[renderChunks[i]].Draw(mat);
-                chunks[renderChunks[i]].Update();
             }
 
             if (Time.unscaledTime >= nextChunkGenerate)
@@ -150,13 +181,96 @@ namespace Hertzole.HertzVox
                 nextChunkGenerate = Time.unscaledTime + chunkGenerateDelay;
                 GenerateChunksAroundTargets();
             }
+
+            ProcessChunks();
+
+            NativeList<int3> jobsToRemove = new NativeList<int3>(Allocator.Temp);
+
+            ProcessGeneratorJobs(jobsToRemove);
+            jobsToRemove.Clear();
+            ProcessRenderJobs(jobsToRemove);
+            jobsToRemove.Clear();
+            ProcessColliderJobs(jobsToRemove);
+            jobsToRemove.Dispose();
+            ProcessChunkRemoval();
         }
 
         private void LateUpdate()
         {
-            for (int i = 0; i < renderChunks.Length; i++)
+            int numChunks = 0;
+
+            while (generateQueue.Count > 0)
             {
-                chunks[renderChunks[i]].LateUpdate();
+                if (generator == null)
+                {
+                    break;
+                }
+
+                if (numChunks > maxGenerateJobs)
+                {
+                    break;
+                }
+
+                ChunkNode node = generateQueue.Dequeue();
+
+                if (chunks.TryGetValue(node.position, out Chunk chunk))
+                {
+                    if (generateJobs.ContainsKey(chunk.position) || !chunk.NeedsTerrain || chunk.RequestedRemoval || chunk.GeneratingTerrain)
+                    {
+                        continue;
+                    }
+
+                    chunk.StartGenerating(new NativeArray<ushort>(Chunk.CHUNK_SIZE * Chunk.CHUNK_SIZE * Chunk.CHUNK_SIZE, Allocator.TempJob));
+
+                    JobHandle job = generator.GenerateChunk(chunk.temporaryBlocks, chunk.position);
+                    ChunkJobData data = new ChunkJobData(node.position, job, node.Priority, false);
+                    generateJobs.Add(chunk.position, data);
+
+                    numChunks++;
+                }
+            }
+
+            numChunks = 0;
+
+            while (renderQueue.Count > 0)
+            {
+                if (numChunks > maxRenderJobs)
+                {
+                    break;
+                }
+
+                ChunkNode node = renderQueue.Dequeue();
+                if (chunks.TryGetValue(node.position, out Chunk chunk))
+                {
+                    if (AddChunkToRenderList(chunk, node.Priority))
+                    {
+                        numChunks++;
+                    }
+                }
+            }
+
+            numChunks = 0;
+
+            while (colliderQueue.Count > 0)
+            {
+                if (numChunks > maxColliderJobs)
+                {
+                    break;
+                }
+
+                ChunkNode node = colliderQueue.Dequeue();
+                if (chunks.TryGetValue(node.position, out Chunk chunk))
+                {
+                    if (colliderJobs.ContainsKey(node.position) || chunk.RequestedRemoval)
+                    {
+                        continue;
+                    }
+
+                    JobHandle job = chunk.ScheduleColliderJob();
+                    colliderJobs.Add(node.position, new ChunkJobData(node.position, job, node.Priority, false));
+                    numChunks++;
+                }
+
             }
         }
 
@@ -186,7 +300,7 @@ namespace Hertzole.HertzVox
                 int yy = Helpers.Mod(position.y, Chunk.CHUNK_SIZE);
                 int zz = Helpers.Mod(position.z, Chunk.CHUNK_SIZE);
 
-                chunk.SetBlock(xx, yy, zz, block);
+                chunk.SetBlockRaw(xx, yy, zz, block);
                 chunk.UpdateChunk(urgent);
             }
         }
@@ -241,7 +355,7 @@ namespace Hertzole.HertzVox
                         else
                         {
                             Serialization.SaveChunk(chunk, true);
-                            chunk.Dispose();
+                            DestroyChunk(chunk);
                         }
                     }
                 }
@@ -260,8 +374,6 @@ namespace Hertzole.HertzVox
 
         public Chunk GetChunk(int3 position)
         {
-            //Assert.IsTrue(Helpers.ContainingChunkPosition(ref position).Equals(position));
-
             chunks.TryGetValue(position, out Chunk chunk);
             return chunk;
         }
@@ -304,11 +416,27 @@ namespace Hertzole.HertzVox
 
                         if (!chunks.TryGetValue(chunkPosition, out Chunk chunk))
                         {
+                            float priority = math.distancesq(chunkPosition, targetPosition);
+
                             chunk = CreateChunk(chunkPosition);
                             chunks.Add(chunkPosition, chunk);
-                            Profiler.BeginSample("Load chunk");
-                            Serialization.LoadChunk(chunk, true);
-                            Profiler.EndSample();
+                            chunk.NeedsTerrain = !Serialization.LoadChunk(chunk, true);
+                            if (chunk.NeedsTerrain)
+                            {
+                                ChunkNode node = new ChunkNode(chunkPosition);
+                                if (!generateQueue.Contains(node))
+                                {
+                                    generateQueue.Enqueue(node, priority);
+                                }
+                            }
+                            else
+                            {
+                                ChunkNode node = new ChunkNode(chunkPosition);
+                                if (!renderQueue.Contains(node))
+                                {
+                                    renderQueue.Enqueue(node, priority);
+                                }
+                            }
                         }
 
                         renderChunks.Add(chunkPosition);
@@ -318,7 +446,7 @@ namespace Hertzole.HertzVox
                         if (x != xMin && z != zMin && x != xMax - 1 && z != zMax - 1)
                         {
                             chunk.render = true;
-                            chunk.UpdateChunkIfNeeded();
+                            //chunk.UpdateChunkIfNeeded();
                         }
                         Profiler.EndSample();
                     }
@@ -332,61 +460,36 @@ namespace Hertzole.HertzVox
             {
                 if (!renderChunks.Contains(chunk))
                 {
-                    chunksToRemove.Add(chunk);
+                    DestroyChunk(chunks[chunk]);
                 }
             }
             Profiler.EndSample();
 
             Profiler.BeginSample("Remove chunks stage 2");
-            //TODO: Pool chunks in memory pool.
-            for (int i = 0; i < chunksToRemove.Length; i++)
-            {
-                if (chunks.TryGetValue(chunksToRemove[i], out Chunk chunk))
-                {
-                    if (chunk.changed)
-                    {
-                        Serialization.SaveChunk(chunk, true);
-                    }
-                    chunk.Dispose();
-                    chunks.Remove(chunksToRemove[i]);
-
-                }
-
-                if (chunkColliders.TryGetValue(chunksToRemove[i], out MeshCollider collider))
-                {
-                    PoolCollider(collider);
-                    chunkColliders.Remove(chunksToRemove[i]);
-                }
-            }
             Profiler.EndSample();
-        }
-
-        private void OnChunkMeshUpdated(int3 position, Mesh mesh)
-        {
-            if (chunkColliders.TryGetValue(position, out MeshCollider collider))
-            {
-                collider.sharedMesh = mesh;
-            }
-            else
-            {
-                collider = GetCollider();
-                collider.sharedMesh = mesh;
-                chunkColliders.Add(position, collider);
-            }
         }
 
         private Chunk CreateChunk(int3 position)
         {
-            Chunk chunk = new Chunk(position);
-            ChunkBlocks chunkBlocks = new ChunkBlocks(Chunk.CHUNK_SIZE);
-            chunk.blocks = chunkBlocks;
-
-            if (generator != null)
+            Chunk chunk = new Chunk(position)
             {
-                generator.GenerateChunk(chunk, position);
-            }
+                blocks = new ChunkBlocks(Chunk.CHUNK_SIZE)
+            };
 
             return chunk;
+        }
+
+        private void DestroyChunk(Chunk chunk)
+        {
+            Assert.IsNotNull(chunk);
+
+            if (chunk.RequestedRemoval || chunksToRemove.Contains(chunk.position))
+            {
+                return;
+            }
+
+            chunk.RequestRemoval();
+            chunksToRemove.Add(chunk.position);
         }
 
         private MeshCollider GetCollider()

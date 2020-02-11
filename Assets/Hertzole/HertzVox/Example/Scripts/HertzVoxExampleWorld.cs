@@ -1,6 +1,8 @@
-﻿using Unity.Mathematics;
+﻿using Unity.Burst;
+using Unity.Collections;
+using Unity.Jobs;
+using Unity.Mathematics;
 using UnityEngine;
-using UnityEngine.Profiling;
 
 namespace Hertzole.HertzVox.Example
 {
@@ -19,42 +21,71 @@ namespace Hertzole.HertzVox.Example
             air = BlockProvider.GetBlock("air");
         }
 
-        public void GenerateChunk(Chunk chunk, int3 position)
+        public JobHandle GenerateChunk(NativeArray<ushort> blocks, int3 position)
         {
-            ushort[] blocks = new ushort[Chunk.CHUNK_SIZE * Chunk.CHUNK_SIZE * Chunk.CHUNK_SIZE];
+            return new GenerateJob()
+            {
+                position = position,
+                chunkSize = Chunk.CHUNK_SIZE,
+                blocks = blocks,
+                stoneId = stone.id,
+                dirtId = dirt.id,
+                grassId = grass.id,
+                airId = air.id
+            }.Schedule();
+        }
+    }
 
+    [BurstCompile]
+    public struct GenerateJob : IJob
+    {
+        [ReadOnly]
+        public int3 position;
+        [ReadOnly]
+        public int chunkSize;
+
+        [ReadOnly]
+        public ushort stoneId;
+        [ReadOnly]
+        public ushort dirtId;
+        [ReadOnly]
+        public ushort grassId;
+        [ReadOnly]
+        public ushort airId;
+
+        [WriteOnly]
+        public NativeArray<ushort> blocks;
+
+        public void Execute()
+        {
             int index = 0;
 
-            Profiler.BeginSample("Create Chunk :: Set blocks");
-            for (int x = 0; x < Chunk.CHUNK_SIZE; x++)
+            for (int x = 0; x < chunkSize; x++)
             {
-                for (int y = 0; y < Chunk.CHUNK_SIZE; y++)
+                for (int y = 0; y < chunkSize; y++)
                 {
-                    for (int z = 0; z < Chunk.CHUNK_SIZE; z++)
+                    for (int z = 0; z < chunkSize; z++)
                     {
                         if (y < 4 && position.y == 0)
                         {
-                            blocks[index] = stone.id;
+                            blocks[index] = stoneId;
                         }
                         else if (y >= 4 && y < 6 && position.y == 0)
                         {
-                            blocks[index] = dirt.id;
+                            blocks[index] = dirtId;
                         }
                         else if (y == 6 && position.y == 0)
                         {
-                            blocks[index] = grass.id;
+                            blocks[index] = grassId;
                         }
                         else
                         {
-                            blocks[index] = air.id;
+                            blocks[index] = airId;
                         }
                         index++;
                     }
                 }
             }
-
-            chunk.blocks.CopyFrom(blocks);
-            Profiler.EndSample();
         }
     }
 }

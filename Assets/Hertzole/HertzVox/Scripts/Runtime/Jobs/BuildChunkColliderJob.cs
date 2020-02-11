@@ -11,6 +11,7 @@ namespace Hertzole.HertzVox
         [ReadOnly]
         public int3 position;
         [ReadOnly]
+        [DeallocateOnJobCompletion]
         public NativeArray<ushort> blocks;
         [ReadOnly]
         public int chunkSize;
@@ -22,10 +23,10 @@ namespace Hertzole.HertzVox
         [WriteOnly]
         public NativeList<int> indicies;
 
-        public NativeArray<bool> mask;
-
         public void Execute()
         {
+            NativeArray<bool> mask = new NativeArray<bool>(chunkSize * chunkSize, Allocator.Temp);
+
             // Sweep over each axis (X, Y and Z)
             for (int d = 0; d < 3; ++d)
             {

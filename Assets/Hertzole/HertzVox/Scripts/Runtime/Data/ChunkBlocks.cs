@@ -14,9 +14,9 @@ namespace Hertzole.HertzVox
             blocks = new NativeArray<ushort>(size * size * size, Allocator.Persistent);
         }
 
-        public NativeArray<ushort> GetBlocks()
+        public NativeArray<ushort> GetBlocks(Allocator allocator)
         {
-            return blocks;
+            return new NativeArray<ushort>(blocks, allocator);
         }
 
         public Block Get(int x, int y, int z)
@@ -49,7 +49,7 @@ namespace Hertzole.HertzVox
             blocks[index] = block.id;
         }
 
-        public void CopyFrom(ushort[] array)
+        public void CopyFrom(NativeArray<ushort> array)
         {
             blocks.CopyFrom(array);
         }
