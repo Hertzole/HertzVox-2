@@ -108,7 +108,9 @@ namespace Hertzole.HertzVox
                 northBlocks = BlockProvider.GetEmptyBlocks(),
                 southBlocks = BlockProvider.GetEmptyBlocks(),
                 eastBlocks = BlockProvider.GetEmptyBlocks(),
-                westBlocks = BlockProvider.GetEmptyBlocks()
+                westBlocks = BlockProvider.GetEmptyBlocks(),
+                upBlocks = BlockProvider.GetEmptyBlocks(),
+                downBlocks = BlockProvider.GetEmptyBlocks()
             }.Schedule();
         }
 

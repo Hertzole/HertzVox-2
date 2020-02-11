@@ -1,14 +1,18 @@
 ﻿using System.IO;
+using System.Text;
 using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Assertions;
+using UnityEngine.Profiling;
 
 namespace Hertzole.HertzVox
 {
 	public static class Serialization
 	{
 		private static string saveLocation;
+
+		private static StringBuilder builder;
 
 		public static bool IsInitialized { get; private set; }
 
@@ -22,14 +26,26 @@ namespace Hertzole.HertzVox
 		static void ResetStatics()
 		{
 			IsInitialized = false;
+			builder = null;
 		}
 #endif
 
 		public static void Initialize(string saveLocation)
 		{
 			SaveLocation = saveLocation;
+			builder = new StringBuilder(saveLocation.Length + 20);
 
 			IsInitialized = true;
+
+			if (!Directory.Exists(saveLocation))
+			{
+				Directory.CreateDirectory(saveLocation);
+			}
+
+			if (!Directory.Exists(TempSaveLocation))
+			{
+				Directory.CreateDirectory(TempSaveLocation);
+			}
 		}
 
 		public static void SaveChunk(Chunk chunk, bool temporary = false)
@@ -45,20 +61,29 @@ namespace Hertzole.HertzVox
 
 			string path = SaveFile(chunk.position, temporary);
 
-			using (BinaryWriter w = new BinaryWriter(File.Open(path, FileMode.OpenOrCreate)))
+		writing:
+			try
 			{
-				w.Write(SAVE_VERSION);
-
-				int intSize = sizeof(int);
-				int length = (intSize * blocks.Length) * 2 + sizeof(ushort);
-
-				for (int i = 0; i < blocks.Length; i++)
+				using (BinaryWriter w = new BinaryWriter(File.Open(path, FileMode.OpenOrCreate)))
 				{
-					w.Write(blocks[i].x);
-					w.Write(blocks[i].y);
-				}
+					w.Write(SAVE_VERSION);
 
-				w.BaseStream.SetLength(length);
+					int intSize = sizeof(int);
+					int length = (intSize * blocks.Length) * 2 + sizeof(ushort);
+
+					for (int i = 0; i < blocks.Length; i++)
+					{
+						w.Write(blocks[i].x);
+						w.Write(blocks[i].y);
+					}
+
+					w.BaseStream.SetLength(length);
+				}
+			}
+			catch (DirectoryNotFoundException)
+			{
+				Directory.CreateDirectory(Path.GetDirectoryName(path));
+				goto writing;
 			}
 
 			blocks.Dispose();
@@ -66,6 +91,7 @@ namespace Hertzole.HertzVox
 
 		public static bool LoadChunk(Chunk chunk, bool temporary = false)
 		{
+			Profiler.BeginSample("Load chunk binary");
 			Assert.IsTrue(IsInitialized, "You need to initialize first!");
 
 			Assert.IsNotNull(chunk, "Chunk can't be null.");
@@ -101,16 +127,23 @@ namespace Hertzole.HertzVox
 
 				chunk.blocks.DecompressAndApply(compressedBlocks);
 
+				Profiler.EndSample();
 				return true;
 			}
 			else
 			{
+				Profiler.EndSample();
 				return false;
 			}
 		}
 
 		public static void ClearTemp()
 		{
+			if (!Directory.Exists(TempSaveLocation))
+			{
+				return;
+			}
+
 			string[] files = Directory.GetFiles(TempSaveLocation, "*.bin");
 			for (int i = 0; i < files.Length; i++)
 			{
@@ -120,9 +153,11 @@ namespace Hertzole.HertzVox
 
 		private static string SaveFile(int3 position, bool temporary)
 		{
-			string save = GetSaveLocation(temporary);
-			save += FileName(position);
-			return save;
+			builder.Clear();
+			return builder.Append(temporary ? TempSaveLocation : saveLocation).Append("/" + position.x + "," + position.y + "," + position.z + ".bin").ToString();
+			//string save = GetSaveLocation(temporary);
+			//save += FileName(position);
+			//return save;
 		}
 
 		private static string FileName(int3 position)
@@ -132,14 +167,7 @@ namespace Hertzole.HertzVox
 
 		private static string GetSaveLocation(bool temporary)
 		{
-			string saveLocation = (temporary ? TempSaveLocation : SaveLocation) + "/";
-
-			if (!Directory.Exists(saveLocation))
-			{
-				Directory.CreateDirectory(saveLocation);
-			}
-
-			return saveLocation;
+			return (temporary ? TempSaveLocation : SaveLocation) + "/";
 		}
 	}
 }

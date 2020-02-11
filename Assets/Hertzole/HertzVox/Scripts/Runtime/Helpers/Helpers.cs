@@ -46,6 +46,7 @@ namespace Hertzole.HertzVox
             return (r < 0) ? (r + modulus) : r;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int3 WorldToChunk(Vector3 worldPosition, int chunkSize)
         {
             return new int3(Mathf.FloorToInt(worldPosition.x / chunkSize), Mathf.FloorToInt(worldPosition.y / chunkSize), Mathf.FloorToInt(worldPosition.z / chunkSize));
