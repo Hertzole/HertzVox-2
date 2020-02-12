@@ -36,7 +36,7 @@ namespace Hertzole.HertzVox
 
             //The block at bPos
             Block hitBlock = world.GetBlock(bPos);
-            while (hitBlock.id == 0 && Vector3.Distance(ray.origin, pos) < range)
+            while (hitBlock.id == 0 && math.distance(ray.origin, pos) < range)
             {
                 // Get the nearest upcoming boundary for each direction
                 boundary.x = MakeBoundary(dirS.x, pos.x);
@@ -50,9 +50,9 @@ namespace Hertzole.HertzVox
                 // Divide the distance by the strength of the corresponding direction, the
                 // lowest number will be the boundary we will hit first. This is like distance
                 // over speed = time where dirP is the speed and the it's time to reach the boundary
-                dist.x = dist.x / dirP.x;
-                dist.y = dist.y / dirP.y;
-                dist.z = dist.z / dirP.z;
+                dist.x /= dirP.x;
+                dist.y /= dirP.y;
+                dist.z /= dirP.z;
 
                 // Use the shortest distance as the distance to travel this step times each direction
                 // to give us the position where the ray intersects the closest boundary

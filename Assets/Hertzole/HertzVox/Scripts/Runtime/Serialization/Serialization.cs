@@ -155,7 +155,8 @@ namespace Hertzole.HertzVox
 		private static string SaveFile(int3 position, bool temporary)
 		{
 			builder.Clear();
-			return builder.Append(temporary ? TempSaveLocation : saveLocation).Append("/" + position.x + "," + position.y + "," + position.z + ".bin").ToString();
+			return builder.Append(temporary ? TempSaveLocation : saveLocation)
+				.Append('/').Append(position.x).Append(',').Append(position.y).Append(',').Append(position.z).Append(".bin").ToString();
 			//string save = GetSaveLocation(temporary);
 			//save += FileName(position);
 			//return save;

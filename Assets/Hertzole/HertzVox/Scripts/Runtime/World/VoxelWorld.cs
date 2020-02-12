@@ -47,15 +47,11 @@ namespace Hertzole.HertzVox
 
         private bool showDebugInfo = false;
 
-        private int3 lastLoaderPosition;
-
         private Material mat;
-
-        private VoxelLoader loader;
 
         private IVoxGeneration generator;
 
-        private FastPriorityQueue<ChunkNode> generateQueue = new FastPriorityQueue<ChunkNode>(2048);
+        private FastPriorityQueue<ChunkNode> generateQueue = new FastPriorityQueue<ChunkNode>(64);
         private FastPriorityQueue<ChunkNode> renderQueue = new FastPriorityQueue<ChunkNode>(64);
         private FastPriorityQueue<ChunkNode> colliderQueue = new FastPriorityQueue<ChunkNode>(64);
 
@@ -65,6 +61,8 @@ namespace Hertzole.HertzVox
 
         private NativeList<int3> renderChunks;
         private NativeList<int3> chunksToRemove;
+
+        private List<VoxelLoader> loaders = new List<VoxelLoader>();
 
         private Stack<MeshCollider> pooledColliders = new Stack<MeshCollider>();
 
@@ -388,71 +386,67 @@ namespace Hertzole.HertzVox
 
         private void GenerateChunksAroundTargets()
         {
-            if (loader == null)
+            if (loaders.Count == 0)
             {
                 return;
             }
-
-            int3 targetPosition = Helpers.WorldToChunk(loader.transform.position, Chunk.CHUNK_SIZE);
-            if (lastLoaderPosition.Equals(targetPosition))
-            {
-                return;
-            }
-
-            lastLoaderPosition = targetPosition;
 
             renderChunks.Clear();
 
-            int xMin = -loader.ChunkDistanceX + targetPosition.x - 1;
-            int zMin = -loader.ChunkDistanceZ + targetPosition.z - 1;
-            int xMax = loader.ChunkDistanceX + targetPosition.x + 2;
-            int zMax = loader.ChunkDistanceZ + targetPosition.z + 2;
-
-            Profiler.BeginSample("Create chunk region");
-            for (int x = xMin; x < xMax; x++)
+            for (int i = 0; i < loaders.Count; i++)
             {
-                for (int z = zMin; z < zMax; z++)
+                VoxelLoader loader = loaders[i];
+
+                if (loader == null)
                 {
-                    for (int y = 0; y < maxY; y++)
+                    continue;
+                }
+
+                int3 targetPosition = Helpers.WorldToChunk(loader.transform.position, Chunk.CHUNK_SIZE);
+
+                int xMin = (loader.SingleChunk ? 0 : -loader.ChunkDistanceX) + targetPosition.x;
+                int zMin = (loader.SingleChunk ? 0 : -loader.ChunkDistanceZ) + targetPosition.z;
+                int xMax = (loader.SingleChunk ? 1 : loader.ChunkDistanceX) + targetPosition.x;
+                int zMax = (loader.SingleChunk ? 1 : loader.ChunkDistanceZ) + targetPosition.z;
+
+                Profiler.BeginSample("Create chunk region");
+                for (int x = xMin; x < xMax; x++)
+                {
+                    for (int z = zMin; z < zMax; z++)
                     {
-                        if (x < minX || x > maxX || z < minZ || z > maxZ)
+                        for (int y = 0; y < maxY; y++)
                         {
-                            continue;
-                        }
-
-                        int3 chunkPosition = new int3(x * Chunk.CHUNK_SIZE, y * Chunk.CHUNK_SIZE, z * Chunk.CHUNK_SIZE);
-
-                        if (!chunks.TryGetValue(chunkPosition, out Chunk chunk))
-                        {
-                            float priority = math.distancesq(chunkPosition, targetPosition);
-
-                            chunk = CreateChunk(chunkPosition);
-                            chunks.Add(chunkPosition, chunk);
-                            chunk.NeedsTerrain = !Serialization.LoadChunk(chunk, true);
-                            if (chunk.NeedsTerrain)
+                            if (x < minX || x > maxX || z < minZ || z > maxZ)
                             {
-                                AddToQueue(generateQueue, chunkPosition, priority);
+                                continue;
                             }
-                            else
+
+                            int3 chunkPosition = new int3(x * Chunk.CHUNK_SIZE, y * Chunk.CHUNK_SIZE, z * Chunk.CHUNK_SIZE);
+
+                            if (!chunks.TryGetValue(chunkPosition, out Chunk chunk))
                             {
-                                AddToQueue(renderQueue, chunkPosition, priority);
+                                float priority = math.distancesq(chunkPosition, targetPosition);
+
+                                chunk = CreateChunk(chunkPosition);
+                                chunks.Add(chunkPosition, chunk);
+                                chunk.NeedsTerrain = !Serialization.LoadChunk(chunk, true);
+                                if (chunk.NeedsTerrain)
+                                {
+                                    AddToQueue(generateQueue, chunkPosition, priority);
+                                }
+                                else
+                                {
+                                    AddToQueue(renderQueue, chunkPosition, priority);
+                                }
                             }
-                        }
 
-                        renderChunks.Add(chunkPosition);
-                        chunk.render = false;
-
-                        Profiler.BeginSample("Update chunks");
-                        if (x != xMin && z != zMin && x != xMax - 1 && z != zMax - 1)
-                        {
+                            renderChunks.Add(chunkPosition);
                             chunk.render = true;
-                            //chunk.UpdateChunkIfNeeded();
                         }
-                        Profiler.EndSample();
                     }
                 }
+                Profiler.EndSample();
             }
-            Profiler.EndSample();
 
             Profiler.BeginSample("Remove chunks stage 1");
             chunksToRemove.Clear();
@@ -507,12 +501,12 @@ namespace Hertzole.HertzVox
 
         public void RegisterLoader(VoxelLoader loader)
         {
-            this.loader = loader;
+            loaders.Add(loader);
         }
 
         public void UnregisterLoader(VoxelLoader loader)
         {
-            this.loader = null;
+            loaders.Remove(loader);
         }
 
 #if DEBUG
