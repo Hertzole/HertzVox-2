@@ -39,7 +39,7 @@ namespace Hertzole.HertzVox
         private NativeList<float3> colliderVertices;
         private NativeList<int> colliderIndicies;
 
-        private Mesh mesh;
+        public Mesh mesh;
 
         public const int CHUNK_SIZE = 16;
 
@@ -145,7 +145,7 @@ namespace Hertzole.HertzVox
             GeneratingTerrain = false;
         }
 
-        public void CompleteMeshUpdate()
+        public Mesh CompleteMeshUpdate(Mesh mesh)
         {
             if (mesh == null)
             {
@@ -171,6 +171,10 @@ namespace Hertzole.HertzVox
             normals.Dispose();
 
             UpdatingRender = false;
+
+            this.mesh = mesh;
+
+            return mesh;
         }
 
         public Mesh CompleteColliderMeshUpdate(Mesh mesh)

@@ -615,11 +615,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   blockCollection: {fileID: 11400000, guid: 019fc2ba0179f5b4ba7f07477403821a, type: 2}
+  clearTempOnDestroy: 1
+  chunkGenerateDelay: 0.25
   chunkMaterial: {fileID: 2100000, guid: f1b1e4181ea66d8419d18098f8dcab39, type: 2}
   chunkColliderPrefab: {fileID: 983178273809730001, guid: 7b9dd5fe9bd7df04b946624b457c6aa4,
     type: 3}
-  chunkGenerateDelay: 0.25
-  clearTempOnDestroy: 1
+  useRendererPrefab: 1
+  rendererPrefab: {fileID: 3273522411770654475, guid: 546e5ba5d7c925145a29be5ae2435be4,
+    type: 3}
   minX: -100
   maxX: 100
   minZ: -100

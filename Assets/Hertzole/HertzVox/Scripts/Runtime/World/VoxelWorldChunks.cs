@@ -1,13 +1,21 @@
 ﻿using Priority_Queue;
+using System.Collections.Generic;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
+using UnityEngine.Assertions;
 
 namespace Hertzole.HertzVox
 {
     public partial class VoxelWorld
     {
+        private Stack<MeshCollider> pooledColliders = new Stack<MeshCollider>();
+        private Stack<MeshRenderer> pooledRenderers = new Stack<MeshRenderer>();
+
+        private Dictionary<int3, MeshCollider> chunkColliders = new Dictionary<int3, MeshCollider>();
+        private Dictionary<int3, MeshRenderer> chunkRenderers = new Dictionary<int3, MeshRenderer>();
+
         private const int MAX_FRAMES = 3;
 
         private void AddToQueue(FastPriorityQueue<ChunkNode> queue, int3 position, float priority)
@@ -99,7 +107,26 @@ namespace Hertzole.HertzVox
                 {
                     data.job.Complete();
                     Chunk chunk = chunks[data.position];
-                    chunk.CompleteMeshUpdate();
+
+                    if (useRendererPrefab)
+                    {
+                        if (!chunkRenderers.TryGetValue(data.position, out MeshRenderer renderer))
+                        {
+                            renderer = GetChunkRenderer();
+                            chunkRenderers.Add(data.position, renderer);
+#if DEBUG
+                            renderer.gameObject.name = "Renderer [" + data.position.x + "," + data.position.y + "," + data.position.z + "]";
+#endif
+                        }
+
+                        MeshFilter filter = renderer.GetComponent<MeshFilter>();
+                        Mesh originalMesh = filter.mesh;
+                        filter.mesh = chunk.CompleteMeshUpdate(originalMesh);
+                    }
+                    else
+                    {
+                        chunk.CompleteMeshUpdate(chunk.mesh);
+                    }
 
                     if (!chunk.RequestedRemoval)
                     {
@@ -137,8 +164,11 @@ namespace Hertzole.HertzVox
 
                     if (!chunkColliders.TryGetValue(data.position, out MeshCollider collider))
                     {
-                        collider = GetCollider();
+                        collider = GetChunkCollider();
                         chunkColliders.Add(data.position, collider);
+#if DEBUG
+                        collider.gameObject.name = "Collider [" + data.position.x + "," + data.position.y + "," + data.position.z + "]";
+#endif
                     }
 
                     Mesh originalMesh = collider.sharedMesh;
@@ -179,10 +209,22 @@ namespace Hertzole.HertzVox
                     }
                     chunk.Dispose();
 
-                    if (chunkColliders.TryGetValue(chunksToRemove[i], out MeshCollider collider))
+                    if (chunkColliders.Count > 0)
                     {
-                        PoolCollider(collider);
-                        chunkColliders.Remove(chunksToRemove[i]);
+                        if (chunkColliders.TryGetValue(chunksToRemove[i], out MeshCollider collider))
+                        {
+                            PoolChunkCollider(collider);
+                            chunkColliders.Remove(chunksToRemove[i]);
+                        }
+                    }
+
+                    if (chunkRenderers.Count > 0)
+                    {
+                        if (chunkRenderers.TryGetValue(chunksToRemove[i], out MeshRenderer renderer))
+                        {
+                            PoolChunkRenderer(renderer);
+                            chunkRenderers.Remove(chunksToRemove[i]);
+                        }
                     }
 
                     chunks.Remove(chunksToRemove[i]);
@@ -202,6 +244,56 @@ namespace Hertzole.HertzVox
             renderJobs.Add(chunk.position, data);
 
             return true;
+        }
+
+        private Chunk CreateChunk(int3 position)
+        {
+            Chunk chunk = new Chunk(position)
+            {
+                blocks = new ChunkBlocks(Chunk.CHUNK_SIZE)
+            };
+
+            return chunk;
+        }
+
+        private void DestroyChunk(Chunk chunk)
+        {
+            Assert.IsNotNull(chunk);
+
+            if (chunk.RequestedRemoval || chunksToRemove.Contains(chunk.position))
+            {
+                return;
+            }
+
+            chunk.RequestRemoval();
+            chunksToRemove.Add(chunk.position);
+        }
+
+        private MeshCollider GetChunkCollider()
+        {
+            MeshCollider collider = pooledColliders.Count > 0 ? pooledColliders.Pop() : Instantiate(chunkColliderPrefab, transform);
+            collider.gameObject.SetActive(true);
+            return collider;
+        }
+
+        private void PoolChunkCollider(MeshCollider collider)
+        {
+            collider.gameObject.SetActive(false);
+            pooledColliders.Push(collider);
+        }
+
+        private MeshRenderer GetChunkRenderer()
+        {
+            MeshRenderer renderer = pooledRenderers.Count > 0 ? pooledRenderers.Pop() : Instantiate(rendererPrefab, transform);
+            renderer.material = mat;
+            renderer.gameObject.SetActive(true);
+            return renderer;
+        }
+
+        private void PoolChunkRenderer(MeshRenderer renderer)
+        {
+            renderer.gameObject.SetActive(false);
+            pooledRenderers.Push(renderer);
         }
     }
 }

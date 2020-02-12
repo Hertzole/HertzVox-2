@@ -4,7 +4,6 @@ using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
-using UnityEngine.Assertions;
 using UnityEngine.Profiling;
 
 namespace Hertzole.HertzVox
@@ -15,13 +14,19 @@ namespace Hertzole.HertzVox
         [SerializeField]
         private BlockCollection blockCollection = null;
         [SerializeField]
+        private bool clearTempOnDestroy = true;
+
+        [Header("Chunks")]
+        [SerializeField]
+        private float chunkGenerateDelay = 0.25f;
+        [SerializeField]
         private Material chunkMaterial = null;
         [SerializeField]
         private MeshCollider chunkColliderPrefab = null;
         [SerializeField]
-        private float chunkGenerateDelay = 0.25f;
+        private bool useRendererPrefab = false;
         [SerializeField]
-        private bool clearTempOnDestroy = true;
+        private MeshRenderer rendererPrefab = null;
 
         [Header("World Size")]
         [SerializeField]
@@ -64,10 +69,7 @@ namespace Hertzole.HertzVox
 
         private List<VoxelLoader> loaders = new List<VoxelLoader>();
 
-        private Stack<MeshCollider> pooledColliders = new Stack<MeshCollider>();
-
         private Dictionary<int3, Chunk> chunks = new Dictionary<int3, Chunk>();
-        private Dictionary<int3, MeshCollider> chunkColliders = new Dictionary<int3, MeshCollider>();
 
         public static VoxelWorld Main { get; private set; }
 
@@ -170,9 +172,12 @@ namespace Hertzole.HertzVox
 
         private void Update()
         {
-            for (int i = 0; i < renderChunks.Length; i++)
+            if (!useRendererPrefab)
             {
-                chunks[renderChunks[i]].Draw(mat);
+                for (int i = 0; i < renderChunks.Length; i++)
+                {
+                    chunks[renderChunks[i]].Draw(mat);
+                }
             }
 
             if (Time.unscaledTime >= nextChunkGenerate)
@@ -461,42 +466,6 @@ namespace Hertzole.HertzVox
                 }
             }
             Profiler.EndSample();
-        }
-
-        private Chunk CreateChunk(int3 position)
-        {
-            Chunk chunk = new Chunk(position)
-            {
-                blocks = new ChunkBlocks(Chunk.CHUNK_SIZE)
-            };
-
-            return chunk;
-        }
-
-        private void DestroyChunk(Chunk chunk)
-        {
-            Assert.IsNotNull(chunk);
-
-            if (chunk.RequestedRemoval || chunksToRemove.Contains(chunk.position))
-            {
-                return;
-            }
-
-            chunk.RequestRemoval();
-            chunksToRemove.Add(chunk.position);
-        }
-
-        private MeshCollider GetCollider()
-        {
-            MeshCollider collider = pooledColliders.Count > 0 ? pooledColliders.Pop() : Instantiate(chunkColliderPrefab, transform);
-            collider.gameObject.SetActive(true);
-            return collider;
-        }
-
-        private void PoolCollider(MeshCollider collider)
-        {
-            collider.gameObject.SetActive(false);
-            pooledColliders.Push(collider);
         }
 
         public void RegisterLoader(VoxelLoader loader)
