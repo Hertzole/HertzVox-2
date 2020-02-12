@@ -1,4 +1,5 @@
-﻿using Unity.Collections;
+﻿using Priority_Queue;
+using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
@@ -9,12 +10,32 @@ namespace Hertzole.HertzVox
     {
         private const int MAX_FRAMES = 3;
 
+        private void AddToQueue(FastPriorityQueue<ChunkNode> queue, int3 position, float priority)
+        {
+            ChunkNode node = new ChunkNode(position);
+#if DEBUG
+            if (queue.Contains(node))
+            {
+                Debug.LogWarning("Wants to enqueue generator job but it already exists.");
+                return;
+            }
+#endif
+            if (queue.Count + 1 >= queue.MaxSize)
+            {
+                queue.Resize(queue.Count + 32);
+            }
+
+            queue.Enqueue(node, priority);
+        }
+
         private void ProcessChunks()
         {
             foreach (Chunk chunk in chunks.Values)
             {
                 if (chunk.dirty)
                 {
+                    chunk.dirty = false;
+
                     if (chunk.urgentUpdate)
                     {
                         AddChunkToRenderList(chunk, 0);
@@ -47,7 +68,7 @@ namespace Hertzole.HertzVox
 
                     if (!chunk.RequestedRemoval)
                     {
-                        renderQueue.Enqueue(new ChunkNode(data.position), data.priority);
+                        AddToQueue(renderQueue, data.position, data.priority);
                     }
 
                     jobsToRemove.Add(jobs.Keys[i]);
@@ -82,7 +103,7 @@ namespace Hertzole.HertzVox
 
                     if (!chunk.RequestedRemoval)
                     {
-                        colliderQueue.Enqueue(new ChunkNode(data.position), data.priority);
+                        AddToQueue(colliderQueue, data.position, data.priority);
                     }
 
                     jobsToRemove.Add(jobs.Keys[i]);
@@ -113,10 +134,15 @@ namespace Hertzole.HertzVox
                 {
                     data.job.Complete();
                     Chunk chunk = chunks[data.position];
-                    MeshCollider collider = chunkColliders.TryGetValue(chunk.position, out MeshCollider col) ? col : GetCollider();
+
+                    if (!chunkColliders.TryGetValue(data.position, out MeshCollider collider))
+                    {
+                        collider = GetCollider();
+                        chunkColliders.Add(data.position, collider);
+                    }
+
                     Mesh originalMesh = collider.sharedMesh;
                     collider.sharedMesh = chunk.CompleteColliderMeshUpdate(originalMesh);
-                    chunkColliders[data.position] = collider;
 
                     jobsToRemove.Add(jobs.Keys[i]);
                 }

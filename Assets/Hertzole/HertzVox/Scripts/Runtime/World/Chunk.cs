@@ -220,6 +220,11 @@ namespace Hertzole.HertzVox
             mesh = null;
 
             blocks.Dispose();
+            if (temporaryBlocks.IsCreated)
+            {
+                temporaryBlocks.Dispose();
+            }
+
             if (vertices.IsCreated)
             {
                 vertices.Dispose();

@@ -45,6 +45,8 @@ namespace Hertzole.HertzVox
 
         private float nextChunkGenerate;
 
+        private bool showDebugInfo = false;
+
         private int3 lastLoaderPosition;
 
         private Material mat;
@@ -53,9 +55,9 @@ namespace Hertzole.HertzVox
 
         private IVoxGeneration generator;
 
-        private FastPriorityQueue<ChunkNode> generateQueue = new FastPriorityQueue<ChunkNode>(10000);
-        private FastPriorityQueue<ChunkNode> renderQueue = new FastPriorityQueue<ChunkNode>(10000);
-        private FastPriorityQueue<ChunkNode> colliderQueue = new FastPriorityQueue<ChunkNode>(10000);
+        private FastPriorityQueue<ChunkNode> generateQueue = new FastPriorityQueue<ChunkNode>(2048);
+        private FastPriorityQueue<ChunkNode> renderQueue = new FastPriorityQueue<ChunkNode>(64);
+        private FastPriorityQueue<ChunkNode> colliderQueue = new FastPriorityQueue<ChunkNode>(64);
 
         private NativeHashMap<int3, ChunkJobData> generateJobs;
         private NativeHashMap<int3, ChunkJobData> renderJobs;
@@ -63,7 +65,6 @@ namespace Hertzole.HertzVox
 
         private NativeList<int3> renderChunks;
         private NativeList<int3> chunksToRemove;
-        private List<MeshCollider> activeColliders = new List<MeshCollider>();
 
         private Stack<MeshCollider> pooledColliders = new Stack<MeshCollider>();
 
@@ -193,6 +194,13 @@ namespace Hertzole.HertzVox
             ProcessColliderJobs(jobsToRemove);
             jobsToRemove.Dispose();
             ProcessChunkRemoval();
+
+#if DEBUG
+            if (Input.GetKeyDown(KeyCode.F12))
+            {
+                showDebugInfo = !showDebugInfo;
+            }
+#endif
         }
 
         private void LateUpdate()
@@ -423,19 +431,11 @@ namespace Hertzole.HertzVox
                             chunk.NeedsTerrain = !Serialization.LoadChunk(chunk, true);
                             if (chunk.NeedsTerrain)
                             {
-                                ChunkNode node = new ChunkNode(chunkPosition);
-                                if (!generateQueue.Contains(node))
-                                {
-                                    generateQueue.Enqueue(node, priority);
-                                }
+                                AddToQueue(generateQueue, chunkPosition, priority);
                             }
                             else
                             {
-                                ChunkNode node = new ChunkNode(chunkPosition);
-                                if (!renderQueue.Contains(node))
-                                {
-                                    renderQueue.Enqueue(node, priority);
-                                }
+                                AddToQueue(renderQueue, chunkPosition, priority);
                             }
                         }
 
@@ -456,16 +456,16 @@ namespace Hertzole.HertzVox
 
             Profiler.BeginSample("Remove chunks stage 1");
             chunksToRemove.Clear();
-            foreach (int3 chunk in chunks.Keys)
+            if (chunks.Count != renderChunks.Length)
             {
-                if (!renderChunks.Contains(chunk))
+                foreach (int3 chunk in chunks.Keys)
                 {
-                    DestroyChunk(chunks[chunk]);
+                    if (!renderChunks.Contains(chunk))
+                    {
+                        DestroyChunk(chunks[chunk]);
+                    }
                 }
             }
-            Profiler.EndSample();
-
-            Profiler.BeginSample("Remove chunks stage 2");
             Profiler.EndSample();
         }
 
@@ -502,7 +502,6 @@ namespace Hertzole.HertzVox
         private void PoolCollider(MeshCollider collider)
         {
             collider.gameObject.SetActive(false);
-            activeColliders.Remove(collider);
             pooledColliders.Push(collider);
         }
 
@@ -516,6 +515,7 @@ namespace Hertzole.HertzVox
             this.loader = null;
         }
 
+#if DEBUG
         private void OnDrawGizmos()
         {
             foreach (KeyValuePair<int3, Chunk> chunk in chunks)
@@ -523,5 +523,30 @@ namespace Hertzole.HertzVox
                 Gizmos.DrawWireCube(new Vector3(chunk.Key.x + (Chunk.CHUNK_SIZE / 2), chunk.Key.y + (Chunk.CHUNK_SIZE / 2), chunk.Key.z + (Chunk.CHUNK_SIZE / 2)), Vector3.one * Chunk.CHUNK_SIZE);
             }
         }
+
+        private void OnGUI()
+        {
+            if (showDebugInfo)
+            {
+                GUILayout.BeginArea(new Rect(Screen.width - 250, Screen.height - 300, 250, 300), GUI.skin.box);
+                GUILayout.BeginVertical();
+
+                GUILayout.Label("Chunks: " + chunks.Count);
+                GUILayout.Label("Render Chunks: " + renderChunks.Length);
+                GUILayout.Label("Remove Chunks: " + chunksToRemove.Length);
+                GUILayout.Label("------");
+                GUILayout.Label("Generate Queue: " + generateQueue.Count + " (Max: " + generateQueue.MaxSize + ")");
+                GUILayout.Label("Render Queue: " + renderQueue.Count + " (Max: " + renderQueue.MaxSize + ")");
+                GUILayout.Label("Collider Queue: " + colliderQueue.Count + " (Max: " + colliderQueue.MaxSize + ")");
+                GUILayout.Label("------");
+                GUILayout.Label("Generate Jobs: " + generateJobs.Length);
+                GUILayout.Label("Render Jobs: " + renderJobs.Length);
+                GUILayout.Label("Collider Jobs: " + colliderJobs.Length);
+
+                GUILayout.EndVertical();
+                GUILayout.EndArea();
+            }
+        }
+#endif
     }
 }

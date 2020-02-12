@@ -7,6 +7,14 @@ namespace Hertzole.HertzVox.Example
         private string[] availableBlocks = new string[] { "air", "stone", "dirt", "grass", "log", "planks", "leaves", "colored", "glass" };
         private int selectedBlock = 0;
 
+        private bool vsync = true;
+
+        private void Start()
+        {
+            QualitySettings.vSyncCount = 1;
+            vsync = true;
+        }
+
         // Update is called once per frame
         void Update()
         {
@@ -17,6 +25,12 @@ namespace Hertzole.HertzVox.Example
                 {
                     VoxelWorld.Main.SetBlock(selectedBlock == 0 ? hit.blockPosition : hit.adjacentPosition, BlockProvider.GetBlock(availableBlocks[selectedBlock]));
                 }
+            }
+
+            if (Input.GetKeyDown(KeyCode.F1))
+            {
+                vsync = !vsync;
+                QualitySettings.vSyncCount = vsync ? 1 : 0;
             }
         }
 

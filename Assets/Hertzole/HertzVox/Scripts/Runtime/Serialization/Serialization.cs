@@ -91,7 +91,6 @@ namespace Hertzole.HertzVox
 
 		public static bool LoadChunk(Chunk chunk, bool temporary = false)
 		{
-			Profiler.BeginSample("Load chunk binary");
 			Assert.IsTrue(IsInitialized, "You need to initialize first!");
 
 			Assert.IsNotNull(chunk, "Chunk can't be null.");
@@ -101,12 +100,15 @@ namespace Hertzole.HertzVox
 				return false;
 			}
 
+			Profiler.BeginSample("Get chunk file name");
 			string path = SaveFile(chunk.position, temporary);
+			Profiler.EndSample();
 
 			if (File.Exists(path))
 			{
 				NativeList<int2> compressedBlocks = new NativeList<int2>(Allocator.Temp);
 
+				Profiler.BeginSample("Load chunk binary");
 				using (BinaryReader r = new BinaryReader(File.Open(path, FileMode.Open)))
 				{
 					int pos = 0;
@@ -124,15 +126,14 @@ namespace Hertzole.HertzVox
 						compressedBlocks.Add(new int2(id, length));
 					}
 				}
+				Profiler.EndSample();
 
 				chunk.blocks.DecompressAndApply(compressedBlocks);
 
-				Profiler.EndSample();
 				return true;
 			}
 			else
 			{
-				Profiler.EndSample();
 				return false;
 			}
 		}
