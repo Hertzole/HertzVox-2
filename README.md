@@ -1,5 +1,5 @@
 # HertzVox 2
-HertzVox 2 is a efficient voxel framework for Unity, built with performance and usability in mind.
+HertzVox 2 is an efficient voxel framework for Unity, built with performance and usability in mind.
 
 ## Features
 - Efficient Burst compiled jobs
@@ -10,8 +10,8 @@ HertzVox 2 is a efficient voxel framework for Unity, built with performance and 
 - Generates greedy Unity colliders
 
 ## Limitations
-Currently there are a few limitations due to jobs:
-- Currently only block shapes are present. New ones need to be hard coded.
+Currently, there are a few limitations due to jobs:
+- Currently, only block shapes are present. New ones need to be hardcoded.
 - The world size can't be infinite (will be changed in the future).
 - No block merging (greedy meshing) for the actual meshes.
 
@@ -20,4 +20,7 @@ Currently there are a few limitations due to jobs:
 This project is the "successor" to my previous voxel engine that got a bit inefficient and hard to work with.
 
 **What about [Voxelmetric](https://github.com/Hertzole/Voxelmetric)?**  
-This project focuses much more on usability and performance and I've spent a lot of time making sure usability is as easy as possible and keeping performance up. Voxelmetric is also quite easy to use and has a lot of performance with the amount of features it provides, but it is a bit harder *for me* to work with. So I decided to roll my own solution. Voxelmetric on the other hand supports more block types and actual threading.
+This project focuses much more on usability and performance and I've spent a lot of time making sure usability is as easy as possible and keeping performance up. Voxelmetric is also quite easy to use and has a lot of performance with the number of features it provides, but it is a bit harder *for me* to work with. So I decided to roll my own solution. Voxelmetric, on the other hand, supports more block types and actual threading.
+
+## License
+The project is licensed under MIT. Basically, do whatever you want but I'm not liable for anything.
