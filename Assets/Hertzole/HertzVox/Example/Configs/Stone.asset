@@ -13,16 +13,22 @@ MonoBehaviour:
   m_Name: Stone
   m_EditorClassIdentifier: 
   blockName: Stone
-  blockID: 1
-  blockIdentifier: stone
-  solid: 1
+  blockID: stone
+  canCollide: 1
   transparent: 0
+  connectToSame: 1
   topTexture: {fileID: 2800000, guid: bbe1ee11856a03b43ad66013fd6ce8de, type: 3}
   bottomTexture: {fileID: 2800000, guid: bbe1ee11856a03b43ad66013fd6ce8de, type: 3}
   northTexture: {fileID: 2800000, guid: bbe1ee11856a03b43ad66013fd6ce8de, type: 3}
   southTexture: {fileID: 2800000, guid: bbe1ee11856a03b43ad66013fd6ce8de, type: 3}
   westTexture: {fileID: 2800000, guid: bbe1ee11856a03b43ad66013fd6ce8de, type: 3}
   eastTexture: {fileID: 2800000, guid: bbe1ee11856a03b43ad66013fd6ce8de, type: 3}
+  topColor: {r: 1, g: 1, b: 1, a: 1}
+  bottomColor: {r: 1, g: 1, b: 1, a: 1}
+  northColor: {r: 1, g: 1, b: 1, a: 1}
+  southColor: {r: 1, g: 1, b: 1, a: 1}
+  westColor: {r: 1, g: 1, b: 1, a: 1}
+  eastColor: {r: 1, g: 1, b: 1, a: 1}
   topTextureId: 0
   bottomTextureId: 0
   northTextureId: 0

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using Unity.Collections;
 using Unity.Mathematics;
 
@@ -90,13 +91,19 @@ namespace Hertzole.HertzVox
             return compressedBlocks;
         }
 
-        public void DecompressAndApply(NativeList<int2> list)
+        public void DecompressAndApply(NativeList<int2> list, Dictionary<ushort, string> palette)
         {
             int index = 0;
 
             for (int i = 0; i < list.Length; i++)
             {
-                Block block = BlockProvider.GetBlock((ushort)list[i].x);
+                if (!BlockProvider.TryGetBlock(palette[(ushort)list[i].x], out Block block))
+                {
+#if DEBUG
+                    UnityEngine.Debug.LogWarning("Couldn't find block with ID '" + palette[(ushort)list[i].x] + "' when decompressing. Replacing it with air.");
+#endif
+                    block = BlockProvider.GetBlock(BlockProvider.AIR_TYPE_ID);
+                }
 
                 for (int j = 0; j < list[i].y; j++)
                 {

@@ -13,8 +13,7 @@ MonoBehaviour:
   m_Name: Leaves
   m_EditorClassIdentifier: 
   blockName: Leaves
-  blockID: 5
-  blockIdentifier: leaves
+  blockID: leaves
   canCollide: 1
   transparent: 1
   connectToSame: 0

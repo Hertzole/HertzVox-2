@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System.Collections.Generic;
+using System.IO;
 using System.Text;
 using Unity.Collections;
 using Unity.Mathematics;
@@ -59,6 +60,8 @@ namespace Hertzole.HertzVox
 
 			NativeList<int2> blocks = chunk.blocks.Compress();
 
+			Dictionary<ushort, string> palette = BlockProvider.GetBlockPalette();
+
 			string path = SaveFile(chunk.position, temporary);
 
 		writing:
@@ -68,16 +71,19 @@ namespace Hertzole.HertzVox
 				{
 					w.Write(SAVE_VERSION);
 
-					int intSize = sizeof(int);
-					int length = (intSize * blocks.Length) * 2 + sizeof(ushort);
+					w.Write(palette.Count);
+					foreach (KeyValuePair<ushort, string> block in palette)
+					{
+						w.Write(block.Key);
+						w.Write(block.Value);
+					}
 
+					w.Write(blocks.Length);
 					for (int i = 0; i < blocks.Length; i++)
 					{
 						w.Write(blocks[i].x);
 						w.Write(blocks[i].y);
 					}
-
-					w.BaseStream.SetLength(length);
 				}
 			}
 			catch (DirectoryNotFoundException)
@@ -107,28 +113,31 @@ namespace Hertzole.HertzVox
 			if (File.Exists(path))
 			{
 				NativeList<int2> compressedBlocks = new NativeList<int2>(Allocator.Temp);
+				Dictionary<ushort, string> palette = new Dictionary<ushort, string>();
 
 				Profiler.BeginSample("Load chunk binary");
 				using (BinaryReader r = new BinaryReader(File.Open(path, FileMode.Open)))
 				{
-					int pos = 0;
-					int streamLength = (int)r.BaseStream.Length;
-
 					ushort saveVersion = r.ReadUInt16();
-					pos += sizeof(ushort);
 
-					while (pos < streamLength)
+					int paletteLength = r.ReadInt32();
+					for (int i = 0; i < paletteLength; i++)
+					{
+						palette.Add(r.ReadUInt16(), r.ReadString());
+					}
+
+					int blockLength = r.ReadInt32();
+
+					for (int i = 0; i < blockLength; i++)
 					{
 						int id = r.ReadInt32();
-						pos += sizeof(int);
 						int length = r.ReadInt32();
-						pos += sizeof(int);
 						compressedBlocks.Add(new int2(id, length));
 					}
 				}
 				Profiler.EndSample();
 
-				chunk.blocks.DecompressAndApply(compressedBlocks);
+				chunk.blocks.DecompressAndApply(compressedBlocks, palette);
 
 				return true;
 			}

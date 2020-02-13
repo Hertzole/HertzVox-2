@@ -12,7 +12,6 @@ namespace Hertzole.HertzVox
         public int3 position;
 
         public bool dirty = false;
-        private bool updatingMesh;
         public bool urgentUpdate;
         private bool onlyThis;
         public bool changed;

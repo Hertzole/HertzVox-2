@@ -13,16 +13,22 @@ MonoBehaviour:
   m_Name: Dirt
   m_EditorClassIdentifier: 
   blockName: Dirt
-  blockID: 2
-  blockIdentifier: dirt
-  solid: 1
+  blockID: dirt
+  canCollide: 1
   transparent: 0
+  connectToSame: 1
   topTexture: {fileID: 2800000, guid: 5a4dee2d77df1ab4d8e66185aec9c5a1, type: 3}
   bottomTexture: {fileID: 2800000, guid: 5a4dee2d77df1ab4d8e66185aec9c5a1, type: 3}
   northTexture: {fileID: 2800000, guid: 5a4dee2d77df1ab4d8e66185aec9c5a1, type: 3}
   southTexture: {fileID: 2800000, guid: 5a4dee2d77df1ab4d8e66185aec9c5a1, type: 3}
   westTexture: {fileID: 2800000, guid: 5a4dee2d77df1ab4d8e66185aec9c5a1, type: 3}
   eastTexture: {fileID: 2800000, guid: 5a4dee2d77df1ab4d8e66185aec9c5a1, type: 3}
+  topColor: {r: 1, g: 1, b: 1, a: 1}
+  bottomColor: {r: 1, g: 1, b: 1, a: 1}
+  northColor: {r: 1, g: 1, b: 1, a: 1}
+  southColor: {r: 1, g: 1, b: 1, a: 1}
+  westColor: {r: 1, g: 1, b: 1, a: 1}
+  eastColor: {r: 1, g: 1, b: 1, a: 1}
   topTextureId: 1
   bottomTextureId: 1
   northTextureId: 1

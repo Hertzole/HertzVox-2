@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: Colored
   m_EditorClassIdentifier: 
   blockName: Colored
-  blockID: 7
-  blockIdentifier: colored
-  solid: 1
+  blockID: colored
+  canCollide: 1
   transparent: 0
+  connectToSame: 1
   topTexture: {fileID: 0}
   bottomTexture: {fileID: 0}
   northTexture: {fileID: 0}

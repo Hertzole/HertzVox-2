@@ -7,9 +7,7 @@ namespace Hertzole.HertzVox
         [SerializeField]
         private string blockName = "New Block";
         [SerializeField]
-        private ushort blockID = 1;
-        [SerializeField]
-        private string blockIdentifier = "new_block";
+        private string blockID = "new_block";
         [SerializeField]
         private bool canCollide = true;
         [SerializeField]
@@ -18,8 +16,7 @@ namespace Hertzole.HertzVox
         private bool connectToSame = true;
 
         public string BlockName { get { return blockName; } }
-        public ushort BlockID { get { return blockID; } }
-        public string BlockIdentifier { get { return blockIdentifier; } }
+        public string BlockID { get { return blockID; } }
 
         public bool CanCollide { get { return canCollide; } }
         public bool Transparent { get { return transparent; } }

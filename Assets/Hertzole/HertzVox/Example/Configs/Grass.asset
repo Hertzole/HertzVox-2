@@ -13,16 +13,22 @@ MonoBehaviour:
   m_Name: Grass
   m_EditorClassIdentifier: 
   blockName: Grass
-  blockID: 3
-  blockIdentifier: grass
-  solid: 1
+  blockID: grass
+  canCollide: 1
   transparent: 0
+  connectToSame: 1
   topTexture: {fileID: 2800000, guid: d41001e157a3cd64b927ca3860271a01, type: 3}
   bottomTexture: {fileID: 2800000, guid: 5a4dee2d77df1ab4d8e66185aec9c5a1, type: 3}
   northTexture: {fileID: 2800000, guid: 024b56783965a48459bed48a7cd369cc, type: 3}
   southTexture: {fileID: 2800000, guid: 024b56783965a48459bed48a7cd369cc, type: 3}
   westTexture: {fileID: 2800000, guid: 024b56783965a48459bed48a7cd369cc, type: 3}
   eastTexture: {fileID: 2800000, guid: 024b56783965a48459bed48a7cd369cc, type: 3}
+  topColor: {r: 1, g: 1, b: 1, a: 1}
+  bottomColor: {r: 1, g: 1, b: 1, a: 1}
+  northColor: {r: 1, g: 1, b: 1, a: 1}
+  southColor: {r: 1, g: 1, b: 1, a: 1}
+  westColor: {r: 1, g: 1, b: 1, a: 1}
+  eastColor: {r: 1, g: 1, b: 1, a: 1}
   topTextureId: 2
   bottomTextureId: 1
   northTextureId: 3
