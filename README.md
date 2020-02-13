@@ -6,7 +6,7 @@ HertzVox 2 is an efficient voxel framework for Unity, built with performance and
 - Easy to use methods to manipulate your voxel world
 - Easy to use API to generate worlds
 - Easily create blocks with scriptable objects
-- Supports over 4 million blocks (in theory)!
+- Supports over 65 thousand blocks (in theory)!
 - Generates greedy Unity colliders
 
 ## Limitations
