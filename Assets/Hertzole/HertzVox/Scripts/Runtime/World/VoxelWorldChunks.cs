@@ -13,10 +13,15 @@ namespace Hertzole.HertzVox
         private Stack<MeshCollider> pooledColliders = new Stack<MeshCollider>();
         private Stack<MeshRenderer> pooledRenderers = new Stack<MeshRenderer>();
 
+        private Dictionary<int3, Chunk> chunks = new Dictionary<int3, Chunk>();
         private Dictionary<int3, MeshCollider> chunkColliders = new Dictionary<int3, MeshCollider>();
         private Dictionary<int3, MeshRenderer> chunkRenderers = new Dictionary<int3, MeshRenderer>();
 
         private const int MAX_FRAMES = 3;
+
+        public int ChunkCount { get { return chunks.Count; } }
+
+        public ICollection<Chunk> Chunks { get { return chunks.Values; } }
 
         private void AddToQueue(FastPriorityQueue<ChunkNode> queue, int3 position, float priority)
         {

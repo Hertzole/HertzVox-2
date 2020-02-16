@@ -1,0 +1,19 @@
+{
+  "name": "se.hertzole.hertzvox",
+  "version": "0.1.0",
+  "displayName": "HertzVox",
+  "description": "An efficient voxel framework built for Unity.",
+  "unity": "2019.3",
+  "unityRelease": "0f6",
+  "dependencies": {
+    "com.unity.burst": "1.2.3",
+    "com.unity.jobs": "0.2.4-preview.11"
+ },
+ "keywords": [
+    "voxel"
+  ],
+  "author": {
+    "name": "Hertzole",
+    "url": "https://www.hertzole.se"
+  }
+}

@@ -6,7 +6,7 @@ namespace Hertzole.HertzVox
 {
     public static class HertzVox
     {
-        public static VoxelRaycastHit Raycast(Ray ray, VoxelWorld world, float range)
+        public static bool Raycast(Ray ray, out VoxelRaycastHit hit, VoxelWorld world, float range)
         {
             // Position as we work through the raycast, starts at origin and gets updated as it reaches each block boundary on the route
             Vector3 pos = ray.origin;
@@ -36,6 +36,7 @@ namespace Hertzole.HertzVox
 
             //The block at bPos
             Block hitBlock = world.GetBlock(bPos);
+            bool hitSomething = false;
             while (hitBlock.id == 0 && math.distance(ray.origin, pos) < range)
             {
                 // Get the nearest upcoming boundary for each direction
@@ -74,12 +75,27 @@ namespace Hertzole.HertzVox
                 adjacentBPos = bPos;
                 bPos = new int3(ResolveBlockPos(pos.x, dirS.x), ResolveBlockPos(pos.y, dirS.y), ResolveBlockPos(pos.z, dirS.z));
                 hitBlock = world.GetBlock(bPos);
+                if (hitBlock.id != 0)
+                {
+                    hitSomething = true;
+                }
+
+                if (bPos.y <= 0)
+                {
+                    break;
+                }
 
                 // The while loop then evaluates if hitblock is a viable block to stop on and
                 // if not does it all again starting from the new position
             }
 
-            return new VoxelRaycastHit()
+            if (!hitSomething)
+            {
+                bPos.y = 0;
+                adjacentBPos.y = 0;
+            }
+
+            hit = new VoxelRaycastHit()
             {
                 block = hitBlock,
                 blockPosition = bPos,
@@ -87,6 +103,8 @@ namespace Hertzole.HertzVox
                 direction = dir,
                 scenePosition = pos
             };
+
+            return hitSomething;
         }
 
         // Resolve a component of a vector3 into an int for a blockPos by using the sign

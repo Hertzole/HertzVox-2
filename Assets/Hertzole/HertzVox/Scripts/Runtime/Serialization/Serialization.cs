@@ -69,21 +69,7 @@ namespace Hertzole.HertzVox
 			{
 				using (BinaryWriter w = new BinaryWriter(File.Open(path, FileMode.OpenOrCreate)))
 				{
-					w.Write(SAVE_VERSION);
-
-					w.Write(palette.Count);
-					foreach (KeyValuePair<ushort, string> block in palette)
-					{
-						w.Write(block.Key);
-						w.Write(block.Value);
-					}
-
-					w.Write(blocks.Length);
-					for (int i = 0; i < blocks.Length; i++)
-					{
-						w.Write(blocks[i].x);
-						w.Write(blocks[i].y);
-					}
+					WriteChunkInfo(w, chunk.position, palette, blocks);
 				}
 			}
 			catch (DirectoryNotFoundException)
@@ -98,7 +84,6 @@ namespace Hertzole.HertzVox
 		public static bool LoadChunk(Chunk chunk, bool temporary = false)
 		{
 			Assert.IsTrue(IsInitialized, "You need to initialize first!");
-
 			Assert.IsNotNull(chunk, "Chunk can't be null.");
 
 			if (chunk == null)
@@ -110,15 +95,27 @@ namespace Hertzole.HertzVox
 			string path = SaveFile(chunk.position, temporary);
 			Profiler.EndSample();
 
+			return DeserializeChunk(chunk, path);
+		}
+
+		private static bool DeserializeChunk(Chunk chunk, string path)
+		{
 			if (File.Exists(path))
 			{
 				NativeList<int2> compressedBlocks = new NativeList<int2>(Allocator.Temp);
 				Dictionary<ushort, string> palette = new Dictionary<ushort, string>();
 
+				int3 position;
 				Profiler.BeginSample("Load chunk binary");
 				using (BinaryReader r = new BinaryReader(File.Open(path, FileMode.Open)))
 				{
 					ushort saveVersion = r.ReadUInt16();
+
+					int x = r.ReadInt32();
+					int y = r.ReadInt32();
+					int z = r.ReadInt32();
+
+					position = new int3(x, y, z);
 
 					int paletteLength = r.ReadInt32();
 					for (int i = 0; i < paletteLength; i++)
@@ -137,6 +134,7 @@ namespace Hertzole.HertzVox
 				}
 				Profiler.EndSample();
 
+				chunk.position = position;
 				chunk.blocks.DecompressAndApply(compressedBlocks, palette);
 
 				return true;
@@ -144,6 +142,127 @@ namespace Hertzole.HertzVox
 			else
 			{
 				return false;
+			}
+		}
+
+		private static void WriteChunkInfo(BinaryWriter w, int3 position, Dictionary<ushort, string> palette, NativeList<int2> blocks)
+		{
+			w.Write(SAVE_VERSION);
+
+			w.Write(position.x);
+			w.Write(position.y);
+			w.Write(position.z);
+
+			w.Write(palette.Count);
+			foreach (KeyValuePair<ushort, string> block in palette)
+			{
+				w.Write(block.Key);
+				w.Write(block.Value);
+			}
+
+			w.Write(blocks.Length);
+			for (int i = 0; i < blocks.Length; i++)
+			{
+				w.Write(blocks[i].x);
+				w.Write(blocks[i].y);
+			}
+		}
+
+		public static void SaveAllJson(VoxelWorld world, string saveLocation = null)
+		{
+			VoxelJsonData data = GetJsonData(world);
+
+			string json = JsonUtility.ToJson(data, false);
+
+			Debug.Log(json);
+		}
+
+		public static VoxelJsonData GetJsonData(VoxelWorld world)
+		{
+			VoxelJsonData data = new VoxelJsonData(BlockProvider.GetBlockPalette());
+
+			List<Chunk> chunks = LoadAllChunks(world);
+			VoxelJsonChunkData[] chunkData = new VoxelJsonChunkData[chunks.Count];
+
+			for (int i = 0; i < chunks.Count; i++)
+			{
+				chunkData[i] = new VoxelJsonChunkData(chunks[i]);
+			}
+
+			data.chunks = chunkData;
+
+			for (int i = 0; i < chunks.Count; i++)
+			{
+				chunks[i].Dispose();
+			}
+
+			return data;
+		}
+
+		public static void LoadAllJson(VoxelWorld world, string json)
+		{
+			LoadFromJsonData(world, JsonUtility.FromJson<VoxelJsonData>(json));
+		}
+
+		public static void LoadFromJsonData(VoxelWorld world, VoxelJsonData data)
+		{
+			Dictionary<ushort, string> palette = new Dictionary<ushort, string>();
+			for (int i = 0; i < data.palette.Length; i++)
+			{
+				palette.Add(data.palette[i].index, data.palette[i].id);
+			}
+
+			for (int i = 0; i < data.chunks.Length; i++)
+			{
+				int3 chunkPosition = new int3(data.chunks[i].position.x, data.chunks[i].position.y, data.chunks[i].position.z);
+
+				NativeList<int2> blocks = new NativeList<int2>(Allocator.Temp);
+				for (int j = 0; j < data.chunks[i].blocks.Length; j++)
+				{
+					blocks.Add(new int2(data.chunks[i].blocks[j].x, data.chunks[i].blocks[j].y));
+				}
+
+				using (BinaryWriter w = new BinaryWriter(File.Open(SaveFile(chunkPosition, true), FileMode.OpenOrCreate)))
+				{
+					WriteChunkInfo(w, chunkPosition, palette, blocks);
+				}
+			}
+		}
+
+		private static List<Chunk> LoadAllChunks(VoxelWorld world)
+		{
+			DumpLoadedChunksToTemp(world);
+			List<Chunk> chunks = new List<Chunk>();
+			string[] tempChunks = System.Array.Empty<string>();
+			tempChunks = Directory.GetFiles(TempSaveLocation, "*.bin");
+
+			if (tempChunks != null && tempChunks.Length > 0)
+			{
+				for (int i = 0; i < tempChunks.Length; i++)
+				{
+					Chunk chunk = new Chunk(int3.zero)
+					{
+						blocks = new ChunkBlocks(Chunk.CHUNK_SIZE)
+					};
+					if (DeserializeChunk(chunk, tempChunks[i]))
+					{
+						chunks.Add(chunk);
+					}
+				}
+			}
+
+			return chunks;
+		}
+
+		private static void DumpLoadedChunksToTemp(VoxelWorld world)
+		{
+			ICollection<Chunk> loadedChunks = world.Chunks;
+			foreach (Chunk chunk in loadedChunks)
+			{
+				if (chunk.changed)
+				{
+					SaveChunk(chunk, true);
+				}
 			}
 		}
 

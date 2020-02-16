@@ -69,8 +69,6 @@ namespace Hertzole.HertzVox
 
         private List<VoxelLoader> loaders = new List<VoxelLoader>();
 
-        private Dictionary<int3, Chunk> chunks = new Dictionary<int3, Chunk>();
-
         public static VoxelWorld Main { get; private set; }
 
 #if UNITY_2019_3_OR_NEWER
@@ -351,6 +349,7 @@ namespace Hertzole.HertzVox
                         {
                             ghostChunk = true;
                             chunk = CreateChunk(chunkPosition);
+                            chunks.Add(chunkPosition, chunk);
                         }
 
                         int maxX = math.min(toX - cx, Chunk.CHUNK_SIZE - 1);
@@ -387,6 +386,19 @@ namespace Hertzole.HertzVox
         {
             chunks.TryGetValue(position, out Chunk chunk);
             return chunk;
+        }
+
+        public void RefreshWorld()
+        {
+            int3 targetPosition = Helpers.WorldToChunk((loaders.Count > 0 && loaders[0] != null) ? loaders[0].transform.position : Vector3.zero, Chunk.CHUNK_SIZE);
+
+            foreach (int3 chunk in chunks.Keys)
+            {
+                if (Serialization.LoadChunk(chunks[chunk], true))
+                {
+                    AddToQueue(renderQueue, chunk, math.distancesq(targetPosition, chunk));
+                }
+            }
         }
 
         private void GenerateChunksAroundTargets()
