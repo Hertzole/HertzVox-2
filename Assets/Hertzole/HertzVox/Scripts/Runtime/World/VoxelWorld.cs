@@ -197,10 +197,12 @@ namespace Hertzole.HertzVox
             ProcessChunkRemoval();
 
 #if DEBUG
+#if !ENABLE_INPUT_SYSTEM
             if (Input.GetKeyDown(KeyCode.F12))
             {
                 showDebugInfo = !showDebugInfo;
             }
+#endif
 #endif
         }
 
@@ -390,15 +392,20 @@ namespace Hertzole.HertzVox
 
         public void RefreshWorld()
         {
-            int3 targetPosition = Helpers.WorldToChunk((loaders.Count > 0 && loaders[0] != null) ? loaders[0].transform.position : Vector3.zero, Chunk.CHUNK_SIZE);
+            generateQueue.Clear();
+            renderQueue.Clear();
+            colliderQueue.Clear();
 
-            foreach (int3 chunk in chunks.Keys)
+            FinishJobsInList(generateJobs);
+            FinishJobsInList(renderJobs);
+            FinishJobsInList(colliderJobs);
+
+            foreach (Chunk chunk in Chunks)
             {
-                if (Serialization.LoadChunk(chunks[chunk], true))
-                {
-                    AddToQueue(renderQueue, chunk, math.distancesq(targetPosition, chunk));
-                }
+                chunk.Dispose(true);
             }
+
+            chunks.Clear();
         }
 
         private void GenerateChunksAroundTargets()
@@ -488,6 +495,18 @@ namespace Hertzole.HertzVox
         public void UnregisterLoader(VoxelLoader loader)
         {
             loaders.Remove(loader);
+        }
+
+        private void FinishJobsInList(NativeHashMap<int3, ChunkJobData> list)
+        {
+            NativeArray<ChunkJobData> jobs = list.GetValueArray(Allocator.Temp);
+
+            for (int i = 0; i < jobs.Length; i++)
+            {
+                jobs[i].job.Complete();
+            }
+
+            jobs.Dispose();
         }
 
 #if DEBUG

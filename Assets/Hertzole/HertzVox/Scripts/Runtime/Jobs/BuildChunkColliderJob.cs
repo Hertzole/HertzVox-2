@@ -5,6 +5,10 @@ using Unity.Mathematics;
 
 namespace Hertzole.HertzVox
 {
+    /*
+     *  Algorithm from https://eddieabbondanz.io/post/voxel/greedy-mesh/
+     * */
+
     [BurstCompile]
     public struct BuildChunkColliderJob : IJob
     {
@@ -18,137 +22,158 @@ namespace Hertzole.HertzVox
         [ReadOnly]
         public NativeHashMap<ushort, Block> blockMap;
 
-        //[WriteOnly]
+        [WriteOnly]
         public NativeList<float3> vertices;
         [WriteOnly]
         public NativeList<int> indicies;
 
+        private int3 startPos;
+        private int3 currPos;
+        private int3 quadSize;
+        private int3 m, n;
+        private int3 offsetPos;
+
+        private int verticesLength;
+
+        private ushort startBlock;
+
         public void Execute()
         {
-            NativeArray<bool> mask = new NativeArray<bool>(chunkSize * chunkSize, Allocator.Temp);
+            DoNewCode();
+        }
 
-            // Sweep over each axis (X, Y and Z)
-            for (int d = 0; d < 3; ++d)
+        private void DoNewCode()
+        {
+            verticesLength = 0;
+            int direction;
+            int workAxis1;
+            int workAxis2;
+
+            for (int face = 0; face < 6; face++)
             {
-                int i, j, k, l, w, h;
-                int u = (d + 1) % 3;
-                int v = (d + 2) % 3;
-                NativeArray<int> x = new NativeArray<int>(3, Allocator.Temp);
-                NativeArray<int> q = new NativeArray<int>(3, Allocator.Temp);
+                bool isBackFace = face > 2;
+                direction = face % 3;
+                workAxis1 = (direction + 1) % 3;
+                workAxis2 = (direction + 2) % 3;
 
-                q[d] = 1;
+                startPos = new int3();
+                currPos = new int3();
 
-                // Check each slice of the chunk one at a time
-                for (x[d] = -1; x[d] < chunkSize;)
+                for (startPos[direction] = 0; startPos[direction] < chunkSize; startPos[direction]++)
                 {
-                    // Compute the mask
-                    int n = 0;
-                    for (x[v] = 0; x[v] < chunkSize; ++x[v])
+                    NativeArray<bool> merged = new NativeArray<bool>(chunkSize * chunkSize, Allocator.Temp);
+
+                    // Build the slices of the mesh.
+                    for (startPos[workAxis1] = 0; startPos[workAxis1] < chunkSize; startPos[workAxis1]++)
                     {
-                        for (x[u] = 0; x[u] < chunkSize; ++x[u])
+                        for (startPos[workAxis2] = 0; startPos[workAxis2] < chunkSize; startPos[workAxis2]++)
                         {
-                            // q determines the direction (X, Y or Z) that we are searching
-                            // m.IsBlockAt(x,y,z) takes global map positions and returns true if a block exists there
+                            startBlock = GetBlock(startPos);
 
-                            bool blockCurrent = 0 <= x[d] ? IsBlockAt(x[0], x[1], x[2]) : true;
-                            bool blockCompare = x[d] < chunkSize - 1 ? IsBlockAt(x[0] + q[0], x[1] + q[1], x[2] + q[2]) : true;
-
-                            // The mask is set to true if there is a visible face between two blocks,
-                            //   i.e. both aren't empty and both aren't blocks
-                            mask[n++] = blockCurrent != blockCompare;
-                        }
-                    }
-
-                    ++x[d];
-
-                    n = 0;
-
-                    // Generate a mesh from the mask using lexicographic ordering,      
-                    //   by looping over each block in this slice of the chunk
-                    for (j = 0; j < chunkSize; ++j)
-                    {
-                        for (i = 0; i < chunkSize;)
-                        {
-                            if (mask[n])
+                            // If this block has already been mereged, is air, or not visible: skip it.
+                            if (merged[GetIndex1DFrom2D(startPos[workAxis1], startPos[workAxis2], chunkSize)] || !blockMap[startBlock].canCollide || !IsBlockFaceVisible(startPos, direction, isBackFace))
                             {
-                                // Compute the width of this quad and store it in w                        
-                                //   This is done by searching along the current axis until mask[n + w] is false
-                                for (w = 1; i + w < chunkSize && mask[n + w]; w++)
+                                continue;
+                            }
+
+                            quadSize = new int3();
+                            for (currPos = startPos, currPos[workAxis2]++; currPos[workAxis2] < chunkSize &&
+                                CompareStep(startPos, currPos, direction, isBackFace) && !merged[GetIndex1DFrom2D(currPos[workAxis1], currPos[workAxis2], chunkSize)];
+                                currPos[workAxis2]++)
+                            { }
+                            quadSize[workAxis2] = currPos[workAxis2] - startPos[workAxis2];
+
+                            for (currPos = startPos, currPos[workAxis1]++; currPos[workAxis1] < chunkSize && CompareStep(startPos, currPos, direction, isBackFace) &&
+                                !merged[GetIndex1DFrom2D(currPos[workAxis1], currPos[workAxis2], chunkSize)]; currPos[workAxis1]++)
+                            {
+                                for (currPos[workAxis2] = startPos[workAxis2]; currPos[workAxis2] < chunkSize && CompareStep(startPos, currPos, direction, isBackFace) &&
+                                    !merged[GetIndex1DFrom2D(currPos[workAxis1], currPos[workAxis2], chunkSize)]; currPos[workAxis2]++)
                                 { }
 
-                                // Compute the height of this quad and store it in h                        
-                                //   This is done by checking if every block next to this row (range 0 to w) is also part of the mask.
-                                //   For example, if w is 5 we currently have a quad of dimensions 1 x 5. To reduce triangle count,
-                                //   greedy meshing will attempt to expand this quad out to CHUNK_SIZE x 5, but will stop if it reaches a hole in the mask
-
-                                bool done = false;
-                                for (h = 1; j + h < chunkSize; h++)
+                                // If we didn't reach the end then its not a good add.
+                                if (currPos[workAxis2] - startPos[workAxis2] < quadSize[workAxis2])
                                 {
-                                    // Check each block next to this quad
-                                    for (k = 0; k < w; ++k)
-                                    {
-                                        // If there's a hole in the mask, exit
-                                        if (!mask[n + k + h * chunkSize])
-                                        {
-                                            done = true;
-                                            break;
-                                        }
-                                    }
-
-                                    if (done)
-                                    {
-                                        break;
-                                    }
+                                    break;
                                 }
-
-                                x[u] = i;
-                                x[v] = j;
-
-                                // du and dv determine the size and orientation of this face
-                                NativeArray<int> du = new NativeArray<int>(3, Allocator.Temp);
-                                du[u] = w;
-
-                                NativeArray<int> dv = new NativeArray<int>(3, Allocator.Temp);
-                                dv[v] = h;
-
-                                // Create a quad for this face. Colour, normal or textures are not stored in this block vertex format.
-                                AppendQuad(new int3(x[0], x[1], x[2]),                 // Top-left vertice position
-                                                       new int3(x[0] + du[0], x[1] + du[1], x[2] + du[2]),         // Top right vertice position
-                                                       new int3(x[0] + dv[0], x[1] + dv[1], x[2] + dv[2]),         // Bottom left vertice position
-                                                       new int3(x[0] + du[0] + dv[0], x[1] + du[1] + dv[1], x[2] + du[2] + dv[2])  // Bottom right vertice position
-                                                       );
-
-                                // Clear this part of the mask, so we don't add duplicate faces
-                                for (l = 0; l < h; ++l)
+                                else
                                 {
-                                    for (k = 0; k < w; ++k)
-                                    {
-                                        mask[n + k + l * chunkSize] = false;
-                                    }
+                                    currPos[workAxis2] = startPos[workAxis2];
                                 }
-
-                                // Increment counters and continue
-                                i += w;
-                                n += w;
-
-                                du.Dispose();
-                                dv.Dispose();
                             }
-                            else
+                            quadSize[workAxis1] = currPos[workAxis1] - startPos[workAxis1];
+
+                            m = new int3();
+                            m[workAxis1] = quadSize[workAxis1];
+
+                            n = new int3();
+                            n[workAxis2] = quadSize[workAxis2];
+
+                            offsetPos = startPos;
+                            offsetPos[direction] += isBackFace ? 0 : 1;
+
+                            AppendQuad(offsetPos, offsetPos + m, offsetPos + m + n, offsetPos + n, isBackFace);
+
+                            for (int f = 0; f < quadSize[workAxis1]; f++)
                             {
-                                i++;
-                                n++;
+                                for (int g = 0; g < quadSize[workAxis2]; g++)
+                                {
+                                    merged[GetIndex1DFrom2D(startPos[workAxis1] + f, startPos[workAxis2] + g, chunkSize)] = true;
+                                }
                             }
                         }
                     }
-                }
 
-                x.Dispose();
-                q.Dispose();
+                    merged.Dispose();
+                }
             }
         }
 
-        private void AppendQuad(int3 tl, int3 tr, int3 bl, int3 br)
+        private bool IsBlockFaceVisible(int3 blockPosition, int axis, bool backFace)
+        {
+            blockPosition[axis] += backFace ? -1 : 1;
+            return !CanBlockCollide(blockPosition.x, blockPosition.y, blockPosition.z);
+        }
+
+        private bool CompareStep(int3 a, int3 b, int direction, bool isBackFace)
+        {
+            ushort blockA = GetBlock(a);
+            ushort blockB = GetBlock(b);
+
+            return blockA == blockB && blockMap[blockB].canCollide && IsBlockFaceVisible(b, direction, isBackFace);
+        }
+
+        private void AppendQuad(int3 tl, int3 tr, int3 bl, int3 br, bool isBackFace)
+        {
+            vertices.Add(position + tl);
+            vertices.Add(position + tr);
+            vertices.Add(position + bl);
+            vertices.Add(position + br);
+
+            verticesLength += 4;
+
+            if (!isBackFace)
+            {
+                indicies.Add(verticesLength - 4);
+                indicies.Add(verticesLength - 3);
+                indicies.Add(verticesLength - 2);
+
+                indicies.Add(verticesLength - 4);
+                indicies.Add(verticesLength - 2);
+                indicies.Add(verticesLength - 1);
+            }
+            else
+            {
+                indicies.Add(verticesLength - 2);
+                indicies.Add(verticesLength - 3);
+                indicies.Add(verticesLength - 4);
+
+                indicies.Add(verticesLength - 1);
+                indicies.Add(verticesLength - 2);
+                indicies.Add(verticesLength - 4);
+            }
+        }
+
+        private void AppendQuadOld(int3 tl, int3 tr, int3 bl, int3 br)
         {
             int index = vertices.Length;
 
@@ -165,14 +190,30 @@ namespace Hertzole.HertzVox
             indicies.Add(index);
         }
 
+        private int GetIndex1DFrom2D(int x, int z, int size)
+        {
+            return x + z * size;
+        }
+
         private int GetIndex1DFrom3D(int x, int y, int z, int size)
         {
             return x * size * size + y * size + z;
         }
 
-        private bool IsBlockAt(int x, int y, int z)
+        private ushort GetBlock(int3 position)
         {
-            return !blockMap[blocks[GetIndex1DFrom3D(x, y, z, chunkSize)]].canCollide;
+            return blocks[GetIndex1DFrom3D(position.x, position.y, position.z, chunkSize)];
+        }
+
+        private bool CanBlockCollide(int x, int y, int z)
+        {
+            int index = GetIndex1DFrom3D(x, y, z, chunkSize);
+            if (index < 0 || index >= blocks.Length)
+            {
+                return false;
+            }
+
+            return blockMap[blocks[index]].canCollide;
         }
     }
 }

@@ -199,13 +199,18 @@ namespace Hertzole.HertzVox
 			return data;
 		}
 
-		public static void LoadAllJson(VoxelWorld world, string json)
+		public static void LoadAllJson(VoxelWorld world, string json, bool clearTemp = true)
 		{
-			LoadFromJsonData(world, JsonUtility.FromJson<VoxelJsonData>(json));
+			LoadFromJsonData(world, JsonUtility.FromJson<VoxelJsonData>(json), clearTemp);
 		}
 
-		public static void LoadFromJsonData(VoxelWorld world, VoxelJsonData data)
+		public static void LoadFromJsonData(VoxelWorld world, VoxelJsonData data, bool clearTemp = true)
 		{
+			if (clearTemp)
+			{
+				ClearTemp();
+			}
+
 			Dictionary<ushort, string> palette = new Dictionary<ushort, string>();
 			for (int i = 0; i < data.palette.Length; i++)
 			{
@@ -285,9 +290,6 @@ namespace Hertzole.HertzVox
 			builder.Clear();
 			return builder.Append(temporary ? TempSaveLocation : saveLocation)
 				.Append('/').Append(position.x).Append(',').Append(position.y).Append(',').Append(position.z).Append(".bin").ToString();
-			//string save = GetSaveLocation(temporary);
-			//save += FileName(position);
-			//return save;
 		}
 
 		private static string FileName(int3 position)

@@ -629,8 +629,8 @@ MonoBehaviour:
   maxZ: 100
   maxY: 8
   maxGenerateJobs: 10
-  maxRenderJobs: 10
-  maxColliderJobs: 10
+  maxRenderJobs: 20
+  maxColliderJobs: 20
 --- !u!4 &1740262676
 Transform:
   m_ObjectHideFlags: 0
