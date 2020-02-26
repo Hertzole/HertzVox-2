@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Text;
 using Unity.Collections;
 using Unity.Mathematics;
@@ -238,8 +239,7 @@ namespace Hertzole.HertzVox
 		{
 			DumpLoadedChunksToTemp(world);
 			List<Chunk> chunks = new List<Chunk>();
-			string[] tempChunks = System.Array.Empty<string>();
-			tempChunks = Directory.GetFiles(TempSaveLocation, "*.bin");
+			string[] tempChunks = Directory.GetFiles(TempSaveLocation, "*.bin");
 
 			if (tempChunks != null && tempChunks.Length > 0)
 			{
@@ -285,21 +285,12 @@ namespace Hertzole.HertzVox
 			}
 		}
 
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static string SaveFile(int3 position, bool temporary)
 		{
 			builder.Clear();
 			return builder.Append(temporary ? TempSaveLocation : saveLocation)
 				.Append('/').Append(position.x).Append(',').Append(position.y).Append(',').Append(position.z).Append(".bin").ToString();
-		}
-
-		private static string FileName(int3 position)
-		{
-			return position.x + "," + position.y + "," + position.z + ".bin";
-		}
-
-		private static string GetSaveLocation(bool temporary)
-		{
-			return (temporary ? TempSaveLocation : SaveLocation) + "/";
 		}
 	}
 }

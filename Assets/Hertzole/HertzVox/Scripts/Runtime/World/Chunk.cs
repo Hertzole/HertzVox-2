@@ -37,6 +37,7 @@ namespace Hertzole.HertzVox
 
         private NativeList<float3> colliderVertices;
         private NativeList<int> colliderIndicies;
+        private NativeList<float3> colliderNormals;
 
         public Mesh mesh;
 
@@ -119,15 +120,23 @@ namespace Hertzole.HertzVox
 
             colliderVertices = new NativeList<float3>(Allocator.TempJob);
             colliderIndicies = new NativeList<int>(Allocator.TempJob);
+            colliderNormals = new NativeList<float3>(Allocator.TempJob);
 
             return new BuildChunkColliderJob()
             {
-                blocks = blocks.GetBlocks(Allocator.TempJob),
-                chunkSize = CHUNK_SIZE,
+                size = CHUNK_SIZE,
                 position = position,
+                blocks = blocks.GetBlocks(Allocator.TempJob),
+                blockMap = BlockProvider.GetBlockMap(),
                 vertices = colliderVertices,
                 indicies = colliderIndicies,
-                blockMap = BlockProvider.GetBlockMap()
+                normals = colliderNormals,
+                northBlocks = BlockProvider.GetEmptyBlocks(),
+                southBlocks = BlockProvider.GetEmptyBlocks(),
+                eastBlocks = BlockProvider.GetEmptyBlocks(),
+                westBlocks = BlockProvider.GetEmptyBlocks(),
+                upBlocks = BlockProvider.GetEmptyBlocks(),
+                downBlocks = BlockProvider.GetEmptyBlocks()
             }.Schedule();
         }
 
@@ -194,10 +203,11 @@ namespace Hertzole.HertzVox
 
             mesh.SetVertices<float3>(colliderVertices);
             mesh.SetIndices<int>(colliderIndicies, MeshTopology.Triangles, 0);
-            mesh.RecalculateNormals();
+            mesh.SetNormals<float3>(colliderNormals);
 
             colliderVertices.Dispose();
             colliderIndicies.Dispose();
+            colliderNormals.Dispose();
 
             UpdatingCollider = false;
 

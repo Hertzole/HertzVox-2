@@ -73,13 +73,16 @@ namespace Hertzole.HertzVox
                 if (blocks[i] == currentBlock)
                 {
                     blockCount++;
+                    // As long as isn't the last block, just keep going. Else add the block.
+                    if (i != blocks.Length - 1)
+                    {
+                        continue;
+                    }
                 }
-                else
-                {
-                    compressedBlocks.Add(new int2(currentBlock, blockCount));
-                    currentBlock = blocks[i];
-                    blockCount = 1;
-                }
+
+                compressedBlocks.Add(new int2(currentBlock, blockCount));
+                currentBlock = blocks[i];
+                blockCount = 1;
             }
 
             //new CompressBlocksJob()
@@ -87,7 +90,6 @@ namespace Hertzole.HertzVox
             //    blocks = blocks,
             //    compressedBlocks = compressedBlocks
             //}.Run();
-
             return compressedBlocks;
         }
 

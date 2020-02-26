@@ -45,6 +45,11 @@ namespace Hertzole.HertzVox
 
         public void Execute()
         {
+            DoOldCode();
+        }
+
+        private void DoOldCode()
+        {
             int index = 0;
             int vertexIndex = 0;
             int trianglesIndex = 0;
@@ -291,6 +296,11 @@ namespace Hertzole.HertzVox
             }
         }
 
+        private int GetIndex1DFrom3D(int x, int y, int z, int size)
+        {
+            return x * size * size + y * size + z;
+        }
+
         private bool IsTransparent(Block block, Block currentBlock)
         {
             if (block.id == 0)
@@ -314,11 +324,6 @@ namespace Hertzole.HertzVox
             }
 
             return false;
-        }
-
-        private int GetIndex1DFrom3D(int x, int y, int z, int size)
-        {
-            return x * size * size + y * size + z;
         }
     }
 }
