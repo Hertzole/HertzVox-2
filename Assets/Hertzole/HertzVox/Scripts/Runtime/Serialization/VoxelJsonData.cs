@@ -37,7 +37,7 @@ namespace Hertzole.HertzVox
         public VoxelJsonChunkData(Chunk chunk)
         {
             position = new Vector3Int(chunk.position.x, chunk.position.y, chunk.position.z);
-            NativeList<int2> compressedBlocks = chunk.blocks.Compress();
+            NativeList<int2> compressedBlocks = chunk.CompressBlocks();
 
             blocks = new Vector2Int[compressedBlocks.Length];
             for (int i = 0; i < blocks.Length; i++)
@@ -50,7 +50,7 @@ namespace Hertzole.HertzVox
     }
 
     [Serializable]
-    public struct VoxelJsonPaletteData
+    public struct VoxelJsonPaletteData : IEquatable<VoxelJsonPaletteData>
     {
         public ushort index;
         public string id;
@@ -59,6 +59,34 @@ namespace Hertzole.HertzVox
         {
             this.index = index;
             this.id = id;
+        }
+
+        public bool Equals(VoxelJsonPaletteData other)
+        {
+            return other.index == index && other.id == id;
+        }
+
+        public override int GetHashCode()
+        {
+            int hashCode = -1056285117;
+            hashCode = hashCode * -1521134295 + index.GetHashCode();
+            hashCode = hashCode * -1521134295 + EqualityComparer<string>.Default.GetHashCode(id);
+            return hashCode;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj != null && obj is VoxelJsonPaletteData data && Equals(data);
+        }
+
+        public static bool operator ==(VoxelJsonPaletteData left, VoxelJsonPaletteData right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(VoxelJsonPaletteData left, VoxelJsonPaletteData right)
+        {
+            return !(left == right);
         }
     }
 }

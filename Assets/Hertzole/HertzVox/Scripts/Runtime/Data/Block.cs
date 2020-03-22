@@ -3,7 +3,7 @@ using Unity.Mathematics;
 
 namespace Hertzole.HertzVox
 {
-    public struct Block
+    public struct Block : IEquatable<Block>, IEquatable<ushort>
     {
         public ushort id;
 
@@ -111,12 +111,22 @@ namespace Hertzole.HertzVox
 
         public override bool Equals(object obj)
         {
-            return obj is Block block ? block.id == id : false;
+            return obj != null && obj is Block block && Equals(block);
         }
 
         public override int GetHashCode()
         {
             return id.GetHashCode();
+        }
+
+        public bool Equals(Block other)
+        {
+            return other.id == id;
+        }
+
+        public bool Equals(ushort other)
+        {
+            return other == id;
         }
 
         public static bool operator ==(Block left, Block right)
@@ -127,6 +137,16 @@ namespace Hertzole.HertzVox
         public static bool operator !=(Block left, Block right)
         {
             return !(left == right);
+        }
+
+        public static implicit operator Block(ushort id)
+        {
+            return BlockProvider.GetBlock(id);
+        }
+
+        public static implicit operator ushort(Block block)
+        {
+            return block.id;
         }
     }
 }

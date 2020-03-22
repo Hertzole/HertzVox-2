@@ -159,6 +159,11 @@ namespace Hertzole.HertzVox
             return emptyBlocks;
         }
 
+        public static NativeArray<ushort> GetEmptyBlocks(Allocator allocator)
+        {
+            return new NativeArray<ushort>(emptyBlocks, allocator);
+        }
+
         public static Dictionary<ushort, string> GetBlockPalette()
         {
             return palette;

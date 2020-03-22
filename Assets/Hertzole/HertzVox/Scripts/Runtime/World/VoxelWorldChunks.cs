@@ -45,24 +45,92 @@ namespace Hertzole.HertzVox
         {
             foreach (Chunk chunk in chunks.Values)
             {
-                if (chunk.dirty)
+                if (chunk.dirty && chunk.render)
                 {
+                    if (!TryToQueueChunkRender(chunk))
+                    {
+                        continue;
+                    }
                     chunk.dirty = false;
-
-                    if (chunk.urgentUpdate)
-                    {
-                        AddChunkToRenderList(chunk, 0);
-                    }
-                    else
-                    {
-                        ChunkNode node = new ChunkNode(chunk.position);
-                        if (!renderQueue.Contains(node))
-                        {
-                            renderQueue.Enqueue(node, 0);
-                        }
-                    }
                 }
             }
+        }
+
+        private bool TryToQueueChunkRender(Chunk chunk, float priority = 0)
+        {
+            if (!AreNeighborsReady(chunk.position))
+            {
+                return false;
+            }
+
+            if (chunk.urgentUpdate)
+            {
+                AddChunkToRenderList(chunk, priority);
+            }
+            else
+            {
+                AddToQueue(renderQueue, chunk.position, priority);
+            }
+
+            return true;
+        }
+
+        private bool AreNeighborsReady(int3 position)
+        {
+            // North
+            if (!IsNeighborReady(new int3(position.x, position.y, position.z + Chunk.CHUNK_SIZE)))
+            {
+                return false;
+            }
+
+            // South
+            if (!IsNeighborReady(new int3(position.x, position.y, position.z - Chunk.CHUNK_SIZE)))
+            {
+                return false;
+            }
+
+            // East
+            if (!IsNeighborReady(new int3(position.x + Chunk.CHUNK_SIZE, position.y, position.z)))
+            {
+                return false;
+            }
+
+            // West
+            if (!IsNeighborReady(new int3(position.x - Chunk.CHUNK_SIZE, position.y, position.z)))
+            {
+                return false;
+            }
+
+            // Top
+            if (position.y != Chunk.CHUNK_SIZE * maxY && !IsNeighborReady(new int3(position.x, position.y + Chunk.CHUNK_SIZE, position.z)))
+            {
+                return false;
+            }
+
+            // Bottom
+            if (position.y != 0 && !IsNeighborReady(new int3(position.x, position.y - Chunk.CHUNK_SIZE, position.z)))
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        private bool IsNeighborReady(int3 position)
+        {
+            if (chunks.TryGetValue(position, out Chunk chunk))
+            {
+                if (!chunk.HasTerrain)
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                return false;
+            }
+
+            return true;
         }
 
         private void ProcessGeneratorJobs(NativeList<int3> jobsToRemove)
@@ -79,9 +147,10 @@ namespace Hertzole.HertzVox
                     Chunk chunk = chunks[data.position];
                     chunk.CompleteGenerating();
 
-                    if (!chunk.RequestedRemoval)
+                    if (!chunk.RequestedRemoval && chunk.render)
                     {
-                        AddToQueue(renderQueue, data.position, data.priority);
+                        //AddToQueue(renderQueue, data.position, data.priority);
+                        TryToQueueChunkRender(chunk, data.priority);
                     }
 
                     jobsToRemove.Add(jobs.Keys[i]);
@@ -198,7 +267,6 @@ namespace Hertzole.HertzVox
 
         private void ProcessChunkRemoval()
         {
-            //TODO: Pool chunks in memory pool.
             for (int i = chunksToRemove.Length - 1; i >= 0; i--)
             {
                 if (chunks.TryGetValue(chunksToRemove[i], out Chunk chunk))
@@ -253,10 +321,7 @@ namespace Hertzole.HertzVox
 
         private Chunk CreateChunk(int3 position)
         {
-            Chunk chunk = new Chunk(position)
-            {
-                blocks = new ChunkBlocks(Chunk.CHUNK_SIZE)
-            };
+            Chunk chunk = new Chunk(this, position, new ChunkBlocks(Chunk.CHUNK_SIZE));
 
             return chunk;
         }

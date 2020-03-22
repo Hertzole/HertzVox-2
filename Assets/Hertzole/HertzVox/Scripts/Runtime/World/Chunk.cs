@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
@@ -8,24 +9,27 @@ namespace Hertzole.HertzVox
 {
     public class Chunk : IEquatable<Chunk>
     {
-        public ChunkBlocks blocks;
+        private ChunkBlocks blocks;
         public int3 position;
 
         public bool dirty = false;
         public bool urgentUpdate;
-        private bool onlyThis;
         public bool changed;
         public bool render;
+        private bool onlyThis;
+        private bool updateNeighbors;
 
         private bool disposed = false;
 
         public bool NeedsTerrain { get; set; }
         public bool GeneratingTerrain { get; private set; }
-        public bool UpdatingRender { get; private set; }
+        public bool UpdatingRenderer { get; private set; }
         public bool UpdatingCollider { get; private set; }
+        public bool HasTerrain { get; private set; }
+        public bool HasRender { get; private set; }
 
         public bool RequestedRemoval { get; private set; }
-        public bool CanRemove { get { return !GeneratingTerrain && !UpdatingRender && !UpdatingCollider; } }
+        public bool CanRemove { get { return !GeneratingTerrain && !UpdatingRenderer && !UpdatingCollider; } }
 
         public NativeArray<ushort> temporaryBlocks;
 
@@ -41,11 +45,19 @@ namespace Hertzole.HertzVox
 
         public Mesh mesh;
 
+        private VoxelWorld world;
+
         public const int CHUNK_SIZE = 16;
 
-        public Chunk(int3 position)
+        public Chunk(VoxelWorld world, int3 position)
         {
+            this.world = world;
             this.position = position;
+        }
+
+        public Chunk(VoxelWorld world, int3 position, ChunkBlocks blocks) : this(world, position)
+        {
+            this.blocks = blocks;
         }
 
         public void Draw(Material chunkMaterial)
@@ -61,6 +73,13 @@ namespace Hertzole.HertzVox
             urgentUpdate = urgent;
             dirty = true;
             onlyThis = false;
+            updateNeighbors = false;
+        }
+
+        public void UpdateChunkAndNeighbors(bool urgent = false)
+        {
+            UpdateChunk(urgent);
+            updateNeighbors = true;
         }
 
         internal void OnlyUpdateThis(bool urgent = false)
@@ -85,13 +104,42 @@ namespace Hertzole.HertzVox
 
         public JobHandle ScheduleRenderJob()
         {
-            UpdatingRender = true;
+            UpdatingRenderer = true;
+            HasRender = true;
 
             vertices = new NativeList<float3>(Allocator.TempJob);
             indicies = new NativeList<int>(Allocator.TempJob);
             uvs = new NativeList<float4>(Allocator.TempJob);
             colors = new NativeList<float4>(Allocator.TempJob);
             normals = new NativeList<float3>(Allocator.TempJob);
+
+            NativeArray<ushort> northBlocks = world.TryGetChunk(new int3(position.x, position.y, position.z + CHUNK_SIZE), out Chunk northChunk) ?
+                northChunk.blocks.GetBlocks(Allocator.TempJob) : BlockProvider.GetEmptyBlocks(Allocator.TempJob);
+
+            NativeArray<ushort> southBlocks = world.TryGetChunk(new int3(position.x, position.y, position.z - CHUNK_SIZE), out Chunk southChunk) ?
+                southChunk.blocks.GetBlocks(Allocator.TempJob) : BlockProvider.GetEmptyBlocks(Allocator.TempJob);
+
+            NativeArray<ushort> eastBlocks = world.TryGetChunk(new int3(position.x + CHUNK_SIZE, position.y, position.z), out Chunk eastChunk) ?
+                eastChunk.blocks.GetBlocks(Allocator.TempJob) : BlockProvider.GetEmptyBlocks(Allocator.TempJob);
+
+            NativeArray<ushort> westBlocks = world.TryGetChunk(new int3(position.x - CHUNK_SIZE, position.y, position.z), out Chunk westChunk) ?
+                westChunk.blocks.GetBlocks(Allocator.TempJob) : BlockProvider.GetEmptyBlocks(Allocator.TempJob);
+
+            NativeArray<ushort> upBlocks = world.TryGetChunk(new int3(position.x, position.y + CHUNK_SIZE, position.z), out Chunk topChunk) ?
+                topChunk.blocks.GetBlocks(Allocator.TempJob) : BlockProvider.GetEmptyBlocks(Allocator.TempJob);
+
+            NativeArray<ushort> downBlocks = world.TryGetChunk(new int3(position.x, position.y - CHUNK_SIZE, position.z), out Chunk downChunk) ?
+                downChunk.blocks.GetBlocks(Allocator.TempJob) : BlockProvider.GetEmptyBlocks(Allocator.TempJob);
+
+            if (!onlyThis && updateNeighbors)
+            {
+                northChunk?.OnlyUpdateThis();
+                southChunk?.OnlyUpdateThis();
+                eastChunk?.OnlyUpdateThis();
+                westChunk?.OnlyUpdateThis();
+                topChunk?.OnlyUpdateThis();
+                downChunk?.OnlyUpdateThis();
+            }
 
             return new BuildChunkJob()
             {
@@ -105,12 +153,12 @@ namespace Hertzole.HertzVox
                 uvs = uvs,
                 colors = colors,
                 normals = normals,
-                northBlocks = BlockProvider.GetEmptyBlocks(),
-                southBlocks = BlockProvider.GetEmptyBlocks(),
-                eastBlocks = BlockProvider.GetEmptyBlocks(),
-                westBlocks = BlockProvider.GetEmptyBlocks(),
-                upBlocks = BlockProvider.GetEmptyBlocks(),
-                downBlocks = BlockProvider.GetEmptyBlocks()
+                northBlocks = northBlocks,
+                southBlocks = southBlocks,
+                eastBlocks = eastBlocks,
+                westBlocks = westBlocks,
+                upBlocks = upBlocks,
+                downBlocks = downBlocks
             }.Schedule();
         }
 
@@ -122,6 +170,24 @@ namespace Hertzole.HertzVox
             colliderIndicies = new NativeList<int>(Allocator.TempJob);
             colliderNormals = new NativeList<float3>(Allocator.TempJob);
 
+            NativeArray<ushort> northBlocks = world.TryGetChunk(new int3(position.x, position.y, position.z + CHUNK_SIZE), out Chunk northChunk) ?
+                northChunk.blocks.GetBlocks(Allocator.TempJob) : BlockProvider.GetEmptyBlocks(Allocator.TempJob);
+
+            NativeArray<ushort> southBlocks = world.TryGetChunk(new int3(position.x, position.y, position.z - CHUNK_SIZE), out Chunk southChunk) ?
+                southChunk.blocks.GetBlocks(Allocator.TempJob) : BlockProvider.GetEmptyBlocks(Allocator.TempJob);
+
+            NativeArray<ushort> eastBlocks = world.TryGetChunk(new int3(position.x + CHUNK_SIZE, position.y, position.z), out Chunk eastChunk) ?
+                eastChunk.blocks.GetBlocks(Allocator.TempJob) : BlockProvider.GetEmptyBlocks(Allocator.TempJob);
+
+            NativeArray<ushort> westBlocks = world.TryGetChunk(new int3(position.x - CHUNK_SIZE, position.y, position.z), out Chunk westChunk) ?
+                westChunk.blocks.GetBlocks(Allocator.TempJob) : BlockProvider.GetEmptyBlocks(Allocator.TempJob);
+
+            NativeArray<ushort> upBlocks = world.TryGetChunk(new int3(position.x, position.y + CHUNK_SIZE, position.z), out Chunk topChunk) ?
+                topChunk.blocks.GetBlocks(Allocator.TempJob) : BlockProvider.GetEmptyBlocks(Allocator.TempJob);
+
+            NativeArray<ushort> downBlocks = world.TryGetChunk(new int3(position.x, position.y - CHUNK_SIZE, position.z), out Chunk downChunk) ?
+                downChunk.blocks.GetBlocks(Allocator.TempJob) : BlockProvider.GetEmptyBlocks(Allocator.TempJob);
+
             return new BuildChunkColliderJob()
             {
                 size = CHUNK_SIZE,
@@ -131,12 +197,12 @@ namespace Hertzole.HertzVox
                 vertices = colliderVertices,
                 indicies = colliderIndicies,
                 normals = colliderNormals,
-                northBlocks = BlockProvider.GetEmptyBlocks(),
-                southBlocks = BlockProvider.GetEmptyBlocks(),
-                eastBlocks = BlockProvider.GetEmptyBlocks(),
-                westBlocks = BlockProvider.GetEmptyBlocks(),
-                upBlocks = BlockProvider.GetEmptyBlocks(),
-                downBlocks = BlockProvider.GetEmptyBlocks()
+                northBlocks = northBlocks,
+                southBlocks = southBlocks,
+                eastBlocks = eastBlocks,
+                westBlocks = westBlocks,
+                upBlocks = upBlocks,
+                downBlocks = downBlocks
             }.Schedule();
         }
 
@@ -151,6 +217,7 @@ namespace Hertzole.HertzVox
             temporaryBlocks.Dispose();
 
             GeneratingTerrain = false;
+            HasTerrain = true;
         }
 
         public Mesh CompleteMeshUpdate(Mesh mesh)
@@ -178,7 +245,8 @@ namespace Hertzole.HertzVox
             colors.Dispose();
             normals.Dispose();
 
-            UpdatingRender = false;
+            UpdatingRenderer = false;
+            HasRender = true;
 
             this.mesh = mesh;
 
@@ -194,11 +262,6 @@ namespace Hertzole.HertzVox
             else
             {
                 mesh.Clear();
-            }
-
-            if (disposed)
-            {
-                Debug.LogWarning("THIS CHUNK HAS BEEN DISPOSED FIRST???");
             }
 
             mesh.SetVertices<float3>(colliderVertices);
@@ -272,12 +335,17 @@ namespace Hertzole.HertzVox
             {
                 colliderIndicies.Dispose();
             }
+
+            if (colliderNormals.IsCreated)
+            {
+                colliderNormals.Dispose();
+            }
         }
 
         public void SetBlock(int x, int y, int z, Block block, bool urgent = true)
         {
             SetBlockRaw(x, y, z, block);
-            UpdateChunk(urgent);
+            UpdateChunkAndNeighbors(urgent);
         }
 
         public void SetBlock(int3 position, Block block, bool urgent = true)
@@ -299,7 +367,7 @@ namespace Hertzole.HertzVox
         public void SetRange(int3 from, int3 to, Block block)
         {
             SetRangeRaw(from, to, block);
-            UpdateChunk();
+            UpdateChunkAndNeighbors();
         }
 
         public void SetRangeRaw(int3 from, int3 to, Block block)
@@ -316,9 +384,25 @@ namespace Hertzole.HertzVox
             }
         }
 
+        public Block GetBlock(int x, int y, int z)
+        {
+            return blocks.Get(x, y, z);
+        }
+
         public void RequestRemoval()
         {
             RequestedRemoval = true;
+        }
+
+        public void DecompressAndApply(NativeList<int2> list, Dictionary<ushort, string> palette)
+        {
+            blocks.DecompressAndApply(list, palette);
+            HasTerrain = true;
+        }
+
+        public NativeList<int2> CompressBlocks()
+        {
+            return blocks.Compress();
         }
 
         public override bool Equals(object obj)
@@ -328,12 +412,7 @@ namespace Hertzole.HertzVox
                 return false;
             }
 
-            if (position.x != chunk.position.x || position.y != chunk.position.y)
-            {
-                return false;
-            }
-
-            return chunk.position.z == position.z;
+            return Equals(chunk);
         }
 
         public override int GetHashCode()

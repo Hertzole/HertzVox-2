@@ -34,9 +34,13 @@ namespace Hertzole.HertzVox
         [SerializeField]
         private int maxX = 10;
         [SerializeField]
+        private bool infiniteX = true;
+        [SerializeField]
         private int minZ = -10;
         [SerializeField]
         private int maxZ = 10;
+        [SerializeField]
+        private bool infiniteZ = true;
         [SerializeField]
         private int maxY = 8;
 
@@ -72,11 +76,13 @@ namespace Hertzole.HertzVox
         public static VoxelWorld Main { get; private set; }
 
 #if UNITY_2019_3_OR_NEWER
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ResetStatics()
+        private static void ResetStatics()
         {
             Main = null;
         }
+
 #endif
 
         private void OnEnable()
@@ -281,7 +287,6 @@ namespace Hertzole.HertzVox
                     colliderJobs.Add(node.position, new ChunkJobData(node.position, job, node.Priority, false));
                     numChunks++;
                 }
-
             }
         }
 
@@ -295,7 +300,7 @@ namespace Hertzole.HertzVox
                 int yy = Helpers.Mod(position.y, Chunk.CHUNK_SIZE);
                 int zz = Helpers.Mod(position.z, Chunk.CHUNK_SIZE);
 
-                return chunk.blocks.Get(xx, yy, zz);
+                return chunk.GetBlock(xx, yy, zz);
             }
 
             return BlockProvider.GetBlock("air");
@@ -311,8 +316,21 @@ namespace Hertzole.HertzVox
                 int yy = Helpers.Mod(position.y, Chunk.CHUNK_SIZE);
                 int zz = Helpers.Mod(position.z, Chunk.CHUNK_SIZE);
 
+                chunk.SetBlock(xx, yy, zz, block);
+            }
+        }
+
+        public void SetBlockRaw(int3 position, Block block)
+        {
+            int3 chunkPos = Helpers.ContainingChunkPosition(position);
+
+            if (chunks.TryGetValue(chunkPos, out Chunk chunk))
+            {
+                int xx = Helpers.Mod(position.x, Chunk.CHUNK_SIZE);
+                int yy = Helpers.Mod(position.y, Chunk.CHUNK_SIZE);
+                int zz = Helpers.Mod(position.z, Chunk.CHUNK_SIZE);
+
                 chunk.SetBlockRaw(xx, yy, zz, block);
-                chunk.UpdateChunk(urgent);
             }
         }
 
@@ -390,6 +408,11 @@ namespace Hertzole.HertzVox
             return chunk;
         }
 
+        public bool TryGetChunk(int3 position, out Chunk chunk)
+        {
+            return chunks.TryGetValue(position, out chunk);
+        }
+
         public void RefreshWorld()
         {
             generateQueue.Clear();
@@ -428,10 +451,10 @@ namespace Hertzole.HertzVox
 
                 int3 targetPosition = Helpers.WorldToChunk(loader.transform.position, Chunk.CHUNK_SIZE);
 
-                int xMin = (loader.SingleChunk ? 0 : -loader.ChunkDistanceX) + targetPosition.x;
-                int zMin = (loader.SingleChunk ? 0 : -loader.ChunkDistanceZ) + targetPosition.z;
-                int xMax = (loader.SingleChunk ? 1 : loader.ChunkDistanceX) + targetPosition.x;
-                int zMax = (loader.SingleChunk ? 1 : loader.ChunkDistanceZ) + targetPosition.z;
+                int xMin = (loader.SingleChunk ? 0 : -loader.ChunkDistanceX) + targetPosition.x - 1;
+                int zMin = (loader.SingleChunk ? 0 : -loader.ChunkDistanceZ) + targetPosition.z - 1;
+                int xMax = (loader.SingleChunk ? 1 : loader.ChunkDistanceX) + targetPosition.x + 1;
+                int zMax = (loader.SingleChunk ? 1 : loader.ChunkDistanceZ) + targetPosition.z + 1;
 
                 Profiler.BeginSample("Create chunk region");
                 for (int x = xMin; x < xMax; x++)
@@ -440,17 +463,22 @@ namespace Hertzole.HertzVox
                     {
                         for (int y = 0; y < maxY; y++)
                         {
-                            if (x < minX || x > maxX || z < minZ || z > maxZ)
+                            if ((!infiniteX && (x < minX || x > maxX)) || (!infiniteZ && (z < minZ || z > maxZ)))
                             {
                                 continue;
                             }
 
                             int3 chunkPosition = new int3(x * Chunk.CHUNK_SIZE, y * Chunk.CHUNK_SIZE, z * Chunk.CHUNK_SIZE);
 
+                            bool shouldRender = false;
+                            if (x != xMin && z != zMin && x != xMax - 1 && z != zMax - 1)
+                            {
+                                shouldRender = true;
+                            }
+
+                            float priority = math.distancesq(chunkPosition, targetPosition);
                             if (!chunks.TryGetValue(chunkPosition, out Chunk chunk))
                             {
-                                float priority = math.distancesq(chunkPosition, targetPosition);
-
                                 chunk = CreateChunk(chunkPosition);
                                 chunks.Add(chunkPosition, chunk);
                                 chunk.NeedsTerrain = !Serialization.LoadChunk(chunk, true);
@@ -460,12 +488,19 @@ namespace Hertzole.HertzVox
                                 }
                                 else
                                 {
-                                    AddToQueue(renderQueue, chunkPosition, priority);
+                                    if (shouldRender)
+                                    {
+                                        TryToQueueChunkRender(chunk, priority);
+                                    }
                                 }
+                            }
+                            else if (chunk.HasTerrain && !chunk.UpdatingRenderer && !chunk.HasRender && shouldRender)
+                            {
+                                TryToQueueChunkRender(chunk, priority);
                             }
 
                             renderChunks.Add(chunkPosition);
-                            chunk.render = true;
+                            chunk.render = shouldRender;
                         }
                     }
                 }
@@ -509,7 +544,8 @@ namespace Hertzole.HertzVox
             jobs.Dispose();
         }
 
-#if DEBUG
+#if UNITY_EDITOR
+
         private void OnDrawGizmos()
         {
             foreach (KeyValuePair<int3, Chunk> chunk in chunks)
@@ -517,6 +553,10 @@ namespace Hertzole.HertzVox
                 Gizmos.DrawWireCube(new Vector3(chunk.Key.x + (Chunk.CHUNK_SIZE / 2), chunk.Key.y + (Chunk.CHUNK_SIZE / 2), chunk.Key.z + (Chunk.CHUNK_SIZE / 2)), Vector3.one * Chunk.CHUNK_SIZE);
             }
         }
+
+#endif
+
+#if DEBUG
 
         private void OnGUI()
         {
@@ -541,6 +581,7 @@ namespace Hertzole.HertzVox
                 GUILayout.EndArea();
             }
         }
+
 #endif
     }
 }

@@ -9,6 +9,8 @@ namespace Hertzole.HertzVox
     {
         private NativeArray<ushort> blocks;
 
+        public int Count { get { return blocks.Length; } }
+
         public ChunkBlocks(int size)
         {
             blocks = new NativeArray<ushort>(size * size * size, Allocator.Persistent);
@@ -93,7 +95,7 @@ namespace Hertzole.HertzVox
             return compressedBlocks;
         }
 
-        public void DecompressAndApply(NativeList<int2> list, Dictionary<ushort, string> palette)
+        internal void DecompressAndApply(NativeList<int2> list, Dictionary<ushort, string> palette)
         {
             int index = 0;
 

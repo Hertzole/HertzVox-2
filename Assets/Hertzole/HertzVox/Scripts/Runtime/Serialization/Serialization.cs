@@ -59,7 +59,7 @@ namespace Hertzole.HertzVox
 				return;
 			}
 
-			NativeList<int2> blocks = chunk.blocks.Compress();
+			NativeList<int2> blocks = chunk.CompressBlocks();
 
 			Dictionary<ushort, string> palette = BlockProvider.GetBlockPalette();
 
@@ -136,7 +136,7 @@ namespace Hertzole.HertzVox
 				Profiler.EndSample();
 
 				chunk.position = position;
-				chunk.blocks.DecompressAndApply(compressedBlocks, palette);
+				chunk.DecompressAndApply(compressedBlocks, palette);
 
 				return true;
 			}
@@ -245,10 +245,7 @@ namespace Hertzole.HertzVox
 			{
 				for (int i = 0; i < tempChunks.Length; i++)
 				{
-					Chunk chunk = new Chunk(int3.zero)
-					{
-						blocks = new ChunkBlocks(Chunk.CHUNK_SIZE)
-					};
+					Chunk chunk = new Chunk(world, int3.zero, new ChunkBlocks(Chunk.CHUNK_SIZE));
 					if (DeserializeChunk(chunk, tempChunks[i]))
 					{
 						chunks.Add(chunk);

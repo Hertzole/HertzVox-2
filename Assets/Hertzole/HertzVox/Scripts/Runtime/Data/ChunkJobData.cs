@@ -24,7 +24,7 @@ namespace Hertzole.HertzVox
 
         public override bool Equals(object obj)
         {
-            return obj != null && obj is ChunkJobData data && data.position.Equals(position);
+            return obj != null && obj is ChunkJobData data && Equals(data);
         }
 
         public bool Equals(ChunkJobData other)

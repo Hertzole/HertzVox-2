@@ -18,16 +18,22 @@ namespace Hertzole.HertzVox
         [ReadOnly]
         public NativeHashMap<ushort, Block> blockMap;
         [ReadOnly]
+        [DeallocateOnJobCompletion]
         public NativeArray<ushort> northBlocks;
         [ReadOnly]
+        [DeallocateOnJobCompletion]
         public NativeArray<ushort> southBlocks;
         [ReadOnly]
+        [DeallocateOnJobCompletion]
         public NativeArray<ushort> eastBlocks;
         [ReadOnly]
+        [DeallocateOnJobCompletion]
         public NativeArray<ushort> westBlocks;
         [ReadOnly]
+        [DeallocateOnJobCompletion]
         public NativeArray<ushort> upBlocks;
         [ReadOnly]
+        [DeallocateOnJobCompletion]
         public NativeArray<ushort> downBlocks;
 
         [WriteOnly]
@@ -188,7 +194,7 @@ namespace Hertzole.HertzVox
                         }
 
                         // Down
-                        if ((y > 0 && IsTransparent(blockMap[blocks[index - size]], block)) || (y == 0 && IsTransparent(blockMap[upBlocks[GetIndex1DFrom3D(x, size - 1, z, size)]], block)))
+                        if ((y > 0 && IsTransparent(blockMap[blocks[index - size]], block)) || (y == 0 && IsTransparent(blockMap[downBlocks[GetIndex1DFrom3D(x, size - 1, z, size)]], block)))
                         {
                             vertices.Add(new float3(x + position.x, y + position.y, z + position.z));
                             vertices.Add(new float3(x + position.x, y + position.y, z + position.z + 1));
