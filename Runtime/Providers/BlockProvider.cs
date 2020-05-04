@@ -6,12 +6,12 @@ namespace Hertzole.HertzVox
 {
     public static class BlockProvider
     {
-        private static NativeHashMap<ushort, Block> blocks;
-        private static Dictionary<string, ushort> blockIds;
+        private static NativeHashMap<int, Block> blocks;
+        private static Dictionary<string, int> blockIds;
         private static Dictionary<string, string> blockNames;
-        private static Dictionary<ushort, string> palette;
+        private static Dictionary<int, string> palette;
 
-        private static NativeArray<ushort> emptyBlocks;
+        private static NativeArray<int> emptyBlocks;
 
         private static bool isInitialized;
 
@@ -19,8 +19,9 @@ namespace Hertzole.HertzVox
         public const string AIR_TYPE = "air";
 
 #if UNITY_2019_3_OR_NEWER
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ResetStatics()
+        private static void ResetStatics()
         {
             Dispose();
 
@@ -28,6 +29,7 @@ namespace Hertzole.HertzVox
             palette = null;
             isInitialized = false;
         }
+
 #endif
 
         public static void Initialize(BlockCollection blockCollection)
@@ -38,12 +40,12 @@ namespace Hertzole.HertzVox
                 return;
             }
 
-            blocks = new NativeHashMap<ushort, Block>(0, Allocator.Persistent);
-            blockIds = new Dictionary<string, ushort>();
+            blocks = new NativeHashMap<int, Block>(0, Allocator.Persistent);
+            blockIds = new Dictionary<string, int>();
             blockNames = new Dictionary<string, string>();
-            palette = new Dictionary<ushort, string>();
+            palette = new Dictionary<int, string>();
 
-            emptyBlocks = new NativeArray<ushort>(Chunk.CHUNK_SIZE * Chunk.CHUNK_SIZE * Chunk.CHUNK_SIZE, Allocator.Persistent);
+            emptyBlocks = new NativeArray<int>(Chunk.CHUNK_SIZE * Chunk.CHUNK_SIZE * Chunk.CHUNK_SIZE, Allocator.Persistent);
 
             blocks.Add(AIR_TYPE_ID, new Block(AIR_TYPE_ID) { canCollide = false });
             blockNames.Add(AIR_TYPE, "Air");
@@ -52,8 +54,17 @@ namespace Hertzole.HertzVox
 
             for (ushort i = 0; i < blockCollection.Blocks.Length; i++)
             {
-                ushort id = (ushort)(i + 1);
+                if (blockCollection.Blocks[i] == null)
+                {
 #if DEBUG
+                    Debug.LogWarning("Element " + i + " in your block collection is null. Skipping it.");
+#endif
+                    continue;
+                }
+                ushort id = (ushort)(i + 1);
+
+#if DEBUG
+
                 if (blockNames.ContainsKey(blockCollection.Blocks[i].BlockID))
                 {
                     Debug.LogError("Found multiple blocks with the ID '" + blockCollection.Blocks[i].BlockID + "'.");
@@ -92,7 +103,7 @@ namespace Hertzole.HertzVox
             }
         }
 
-        public static bool TryGetBlock(ushort id, out Block block)
+        public static bool TryGetBlock(int id, out Block block)
         {
             if (!isInitialized)
             {
@@ -115,7 +126,7 @@ namespace Hertzole.HertzVox
             return TryGetBlock(blockIds[identifier], out block);
         }
 
-        public static Block GetBlock(ushort id)
+        public static Block GetBlock(int id)
         {
             if (!isInitialized)
             {
@@ -149,22 +160,22 @@ namespace Hertzole.HertzVox
             return blockNames[identifier];
         }
 
-        public static NativeHashMap<ushort, Block> GetBlockMap()
+        public static NativeHashMap<int, Block> GetBlockMap()
         {
             return blocks;
         }
 
-        public static NativeArray<ushort> GetEmptyBlocks()
+        public static NativeArray<int> GetEmptyBlocks()
         {
             return emptyBlocks;
         }
 
-        public static NativeArray<ushort> GetEmptyBlocks(Allocator allocator)
+        public static NativeArray<int> GetEmptyBlocks(Allocator allocator)
         {
-            return new NativeArray<ushort>(emptyBlocks, allocator);
+            return new NativeArray<int>(emptyBlocks, allocator);
         }
 
-        public static Dictionary<ushort, string> GetBlockPalette()
+        public static Dictionary<int, string> GetBlockPalette()
         {
             return palette;
         }

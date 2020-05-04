@@ -18,7 +18,7 @@ namespace Hertzole.HertzVox
 
         [Header("Chunks")]
         [SerializeField]
-        private float chunkGenerateDelay = 0.25f;
+        private float chunkGenerateDelay = 0.2f;
         [SerializeField]
         private Material chunkMaterial = null;
         [SerializeField]
@@ -46,11 +46,14 @@ namespace Hertzole.HertzVox
 
         [Header("Queue Sizes")]
         [SerializeField]
-        private int maxGenerateJobs = 10;
+        [Range(0, 3)]
+        private int maxJobFrames = 3;
         [SerializeField]
-        private int maxRenderJobs = 10;
+        private int maxGenerateJobs = 40;
         [SerializeField]
-        private int maxColliderJobs = 10;
+        private int maxRenderJobs = 20;
+        [SerializeField]
+        private int maxColliderJobs = 20;
 
         private float nextChunkGenerate;
 
@@ -237,7 +240,7 @@ namespace Hertzole.HertzVox
                         continue;
                     }
 
-                    chunk.StartGenerating(new NativeArray<ushort>(Chunk.CHUNK_SIZE * Chunk.CHUNK_SIZE * Chunk.CHUNK_SIZE, Allocator.TempJob));
+                    chunk.StartGenerating(new NativeArray<int>(Chunk.CHUNK_SIZE * Chunk.CHUNK_SIZE * Chunk.CHUNK_SIZE, Allocator.TempJob));
 
                     JobHandle job = generator.GenerateChunk(chunk.temporaryBlocks, chunk.position);
                     ChunkJobData data = new ChunkJobData(node.position, job, node.Priority, false);
@@ -573,9 +576,9 @@ namespace Hertzole.HertzVox
                 GUILayout.Label("Render Queue: " + renderQueue.Count + " (Max: " + renderQueue.MaxSize + ")");
                 GUILayout.Label("Collider Queue: " + colliderQueue.Count + " (Max: " + colliderQueue.MaxSize + ")");
                 GUILayout.Label("------");
-                GUILayout.Label("Generate Jobs: " + generateJobs.Length);
-                GUILayout.Label("Render Jobs: " + renderJobs.Length);
-                GUILayout.Label("Collider Jobs: " + colliderJobs.Length);
+                GUILayout.Label("Generate Jobs: " + generateJobs.Count());
+                GUILayout.Label("Render Jobs: " + renderJobs.Count());
+                GUILayout.Label("Collider Jobs: " + colliderJobs.Count());
 
                 GUILayout.EndVertical();
                 GUILayout.EndArea();

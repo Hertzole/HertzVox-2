@@ -27,10 +27,9 @@ namespace Hertzole.HertzVox
         public List<int> UniqueTextureIds { get { return uniqueTextureIds; } }
 
 #if UNITY_EDITOR
+
         public void ValidateTextures()
         {
-            Debug.Log("BlockCollection :: Validate Textures");
-
             Dictionary<string, int> textures = new Dictionary<string, int>();
 
             uniqueTextures.Clear();
@@ -85,6 +84,7 @@ namespace Hertzole.HertzVox
         {
             ValidateTextures();
         }
+
 #endif
     }
 }

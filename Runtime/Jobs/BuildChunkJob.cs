@@ -1,4 +1,5 @@
-﻿using Unity.Burst;
+﻿using System.Runtime.CompilerServices;
+using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
@@ -11,32 +12,32 @@ namespace Hertzole.HertzVox
         [ReadOnly]
         public int3 position;
         [ReadOnly]
-        public int size;
+        public int chunkSize;
         [ReadOnly]
         [DeallocateOnJobCompletion]
-        public NativeArray<ushort> blocks;
+        public NativeArray<int> blocks;
         [ReadOnly]
-        public NativeHashMap<ushort, Block> blockMap;
+        public NativeHashMap<int, Block> blockMap;
         [ReadOnly]
         public NativeHashMap<int, int2> textures;
         [ReadOnly]
         [DeallocateOnJobCompletion]
-        public NativeArray<ushort> northBlocks;
+        public NativeArray<int> northBlocks;
         [ReadOnly]
         [DeallocateOnJobCompletion]
-        public NativeArray<ushort> southBlocks;
+        public NativeArray<int> southBlocks;
         [ReadOnly]
         [DeallocateOnJobCompletion]
-        public NativeArray<ushort> eastBlocks;
+        public NativeArray<int> eastBlocks;
         [ReadOnly]
         [DeallocateOnJobCompletion]
-        public NativeArray<ushort> westBlocks;
+        public NativeArray<int> westBlocks;
         [ReadOnly]
         [DeallocateOnJobCompletion]
-        public NativeArray<ushort> upBlocks;
+        public NativeArray<int> upBlocks;
         [ReadOnly]
         [DeallocateOnJobCompletion]
-        public NativeArray<ushort> downBlocks;
+        public NativeArray<int> downBlocks;
 
         [WriteOnly]
         public NativeList<float3> vertices;
@@ -49,22 +50,24 @@ namespace Hertzole.HertzVox
         [WriteOnly]
         public NativeList<float3> normals;
 
+        private int vertexIndex;
+
         public void Execute()
         {
-            DoOldCode();
+            BuildChunk();
         }
 
-        private void DoOldCode()
+        private void BuildChunk()
         {
             int index = 0;
-            int vertexIndex = 0;
+            vertexIndex = 0;
             int trianglesIndex = 0;
 
-            for (int x = 0; x < size; x++)
+            for (int x = 0; x < chunkSize; x++)
             {
-                for (int y = 0; y < size; y++)
+                for (int y = 0; y < chunkSize; y++)
                 {
-                    for (int z = 0; z < size; z++)
+                    for (int z = 0; z < chunkSize; z++)
                     {
                         Block block = blockMap[blocks[index]];
 
@@ -75,7 +78,7 @@ namespace Hertzole.HertzVox
                         }
 
                         // North
-                        if ((z < size - 1 && IsTransparent(blockMap[blocks[index + 1]], block)) || (z == size - 1 && IsTransparent(blockMap[northBlocks[GetIndex1DFrom3D(x, y, 0, size)]], block)))
+                        if ((z < chunkSize - 1 && IsTransparent(blockMap[blocks[index + 1]], block)) || (z == chunkSize - 1 && IsTransparent(blockMap[northBlocks[GetIndex1DFrom3D(x, y, 0, chunkSize)]], block)))
                         {
                             vertices.Add(new float3(x + position.x, y + position.y, z + position.z + 1));
                             vertices.Add(new float3(x + position.x + 1, y + position.y, z + position.z + 1));
@@ -112,7 +115,7 @@ namespace Hertzole.HertzVox
                         }
 
                         // East
-                        if ((x < size - 1 && IsTransparent(blockMap[blocks[index + size * size]], block)) || (x == size - 1 && IsTransparent(blockMap[eastBlocks[GetIndex1DFrom3D(0, y, z, size)]], block)))
+                        if ((x < chunkSize - 1 && IsTransparent(blockMap[blocks[index + chunkSize * chunkSize]], block)) || (x == chunkSize - 1 && IsTransparent(blockMap[eastBlocks[GetIndex1DFrom3D(0, y, z, chunkSize)]], block)))
                         {
                             vertices.Add(new float3(x + position.x + 1, y + position.y, z + position.z));
                             vertices.Add(new float3(x + position.x + 1, y + position.y, z + position.z + 1));
@@ -149,7 +152,7 @@ namespace Hertzole.HertzVox
                         }
 
                         // South
-                        if ((z > 0 && IsTransparent(blockMap[blocks[index - 1]], block)) || (z == 0 && IsTransparent(blockMap[southBlocks[GetIndex1DFrom3D(x, y, size - 1, size)]], block)))
+                        if ((z > 0 && IsTransparent(blockMap[blocks[index - 1]], block)) || (z == 0 && IsTransparent(blockMap[southBlocks[GetIndex1DFrom3D(x, y, chunkSize - 1, chunkSize)]], block)))
                         {
                             vertices.Add(new float3(x + position.x, y + position.y, z + position.z));
                             vertices.Add(new float3(x + position.x + 1, y + position.y, z + position.z));
@@ -186,7 +189,7 @@ namespace Hertzole.HertzVox
                         }
 
                         // West
-                        if ((x > 0 && IsTransparent(blockMap[blocks[index - size * size]], block)) || (x == 0 && IsTransparent(blockMap[westBlocks[GetIndex1DFrom3D(size - 1, y, z, size)]], block)))
+                        if ((x > 0 && IsTransparent(blockMap[blocks[index - chunkSize * chunkSize]], block)) || (x == 0 && IsTransparent(blockMap[westBlocks[GetIndex1DFrom3D(chunkSize - 1, y, z, chunkSize)]], block)))
                         {
                             vertices.Add(new float3(x + position.x, y + position.y, z + position.z));
                             vertices.Add(new float3(x + position.x, y + position.y + 1, z + position.z));
@@ -223,7 +226,7 @@ namespace Hertzole.HertzVox
                         }
 
                         // Up
-                        if ((y < size - 1 && IsTransparent(blockMap[blocks[index + size]], block)) || (y == size - 1 && IsTransparent(blockMap[upBlocks[GetIndex1DFrom3D(x, 0, z, size)]], block)))
+                        if ((y < chunkSize - 1 && IsTransparent(blockMap[blocks[index + chunkSize]], block)) || (y == chunkSize - 1 && IsTransparent(blockMap[upBlocks[GetIndex1DFrom3D(x, 0, z, chunkSize)]], block)))
                         {
                             vertices.Add(new float3(x + position.x, y + position.y + 1, z + position.z));
                             vertices.Add(new float3(x + position.x + 1, y + position.y + 1, z + position.z));
@@ -260,7 +263,7 @@ namespace Hertzole.HertzVox
                         }
 
                         // Down
-                        if ((y > 0 && IsTransparent(blockMap[blocks[index - size]], block)) || (y == 0 && IsTransparent(blockMap[downBlocks[GetIndex1DFrom3D(x, size - 1, z, size)]], block)))
+                        if ((y > 0 && IsTransparent(blockMap[blocks[index - chunkSize]], block)) || (y == 0 && IsTransparent(blockMap[downBlocks[GetIndex1DFrom3D(x, chunkSize - 1, z, chunkSize)]], block)))
                         {
                             vertices.Add(new float3(x + position.x, y + position.y, z + position.z));
                             vertices.Add(new float3(x + position.x, y + position.y, z + position.z + 1));
@@ -302,6 +305,7 @@ namespace Hertzole.HertzVox
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private int GetIndex1DFrom3D(int x, int y, int z, int size)
         {
             return x * size * size + y * size + z;

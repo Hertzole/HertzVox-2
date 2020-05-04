@@ -12,13 +12,13 @@ namespace Hertzole.HertzVox
         public VoxelJsonPaletteData[] palette;
         public VoxelJsonChunkData[] chunks;
 
-        public VoxelJsonData(Dictionary<ushort, string> palette)
+        public VoxelJsonData(Dictionary<int, string> palette)
         {
             this.palette = new VoxelJsonPaletteData[palette.Count];
 
             int index = 0;
 
-            foreach (KeyValuePair<ushort, string> item in palette)
+            foreach (KeyValuePair<int, string> item in palette)
             {
                 this.palette[index] = new VoxelJsonPaletteData(item.Key, item.Value);
                 index++;
@@ -52,10 +52,10 @@ namespace Hertzole.HertzVox
     [Serializable]
     public struct VoxelJsonPaletteData : IEquatable<VoxelJsonPaletteData>
     {
-        public ushort index;
+        public int index;
         public string id;
 
-        public VoxelJsonPaletteData(ushort index, string id)
+        public VoxelJsonPaletteData(int index, string id)
         {
             this.index = index;
             this.id = id;

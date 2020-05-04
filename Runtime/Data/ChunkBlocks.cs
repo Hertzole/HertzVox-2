@@ -7,18 +7,18 @@ namespace Hertzole.HertzVox
 {
     public struct ChunkBlocks : IDisposable
     {
-        private NativeArray<ushort> blocks;
+        private NativeArray<int> blocks;
 
         public int Count { get { return blocks.Length; } }
 
         public ChunkBlocks(int size)
         {
-            blocks = new NativeArray<ushort>(size * size * size, Allocator.Persistent);
+            blocks = new NativeArray<int>(size * size * size, Allocator.Persistent);
         }
 
-        public NativeArray<ushort> GetBlocks(Allocator allocator)
+        public NativeArray<int> GetBlocks(Allocator allocator)
         {
-            return new NativeArray<ushort>(blocks, allocator);
+            return new NativeArray<int>(blocks, allocator);
         }
 
         public Block Get(int x, int y, int z)
@@ -51,7 +51,7 @@ namespace Hertzole.HertzVox
             blocks[index] = block.id;
         }
 
-        public void CopyFrom(NativeArray<ushort> array)
+        public void CopyFrom(NativeArray<int> array)
         {
             blocks.CopyFrom(array);
         }
@@ -95,16 +95,16 @@ namespace Hertzole.HertzVox
             return compressedBlocks;
         }
 
-        internal void DecompressAndApply(NativeList<int2> list, Dictionary<ushort, string> palette)
+        internal void DecompressAndApply(NativeList<int2> list, Dictionary<int, string> palette)
         {
             int index = 0;
 
             for (int i = 0; i < list.Length; i++)
             {
-                if (!BlockProvider.TryGetBlock(palette[(ushort)list[i].x], out Block block))
+                if (!BlockProvider.TryGetBlock(palette[list[i].x], out Block block))
                 {
 #if DEBUG
-                    UnityEngine.Debug.LogWarning("Couldn't find block with ID '" + palette[(ushort)list[i].x] + "' when decompressing. Replacing it with air.");
+                    UnityEngine.Debug.LogWarning("Couldn't find block with ID '" + palette[list[i].x] + "' when decompressing. Replacing it with air.");
 #endif
                     block = BlockProvider.GetBlock(BlockProvider.AIR_TYPE_ID);
                 }

@@ -8,7 +8,7 @@ HertzVox 2 is an efficient voxel framework for Unity, built with performance and
 - Easy to use API
 - Easily create new blocks
 - Supports both infinite worlds and set sized worlds
-- Theoretically supports 64,000 blocks  
+- Theoretically supports over 2 billion blocks  
 
 Also works really well in the Unity editor and with the following features  
 
@@ -23,6 +23,12 @@ This framework does have some limitations you need to be aware of:
 - Blocks can't have "states". They are basically just ID numbers connected to textures.
 If you find any more limitations, please let me know and maybe we can fix it or it will be added to the list!
 
+## 📦 Installation
+**Recommended Unity version: 2019.3+**
+
+To install this package you need to use the Unity package manager. Click on the + button in the top left corner and "Add package from git". Paste in this URL:  
+`https://github.com/Hertzole/HertzVox-2.git`
+
 ## ✅ To do
 Here are some things I want to do in the future. The timeframe of these features are uncertain. Feel free to try and make them yourself and make a pull request, if you feel like it! 
 
@@ -31,6 +37,7 @@ Here are some things I want to do in the future. The timeframe of these features
 - Support more block shapes, like slabs, stairs, etc
 - Rotatable blocks
 - Greedy meshing for chunk renderers and colliders
+- Support per block materials
 
 ## 🔨 How do I...
 ### Get a block
@@ -81,6 +88,22 @@ Block block = BlockProvider.GetBlock("grass");
 // Set the block in the current active world. Raw means it won't automatically update the chunks.
 // Also works with SetBlocks.
 Voxels.SetBlockRaw(position, block);
+```
+
+### Create a world generator
+```cs
+// Implement the IVoxGenerator interface and then attach this script to the same object as the VoxelWorld.
+public class MyGenerator : MonoBehaviour, IVoxGenerator
+{
+    // Implement the interface method where you return a scheduled job that you create.
+    // 'GenerateJob' here is not included, it's YOUR OWN job.
+    // You need to fill the blocks array that gets provided. Those are the blocks in the chunk.
+    // The position is the chunk position in the world.
+    public JobHandle GenerateChunk(NativeArray<int> blocks, int3 position)
+    {
+        return new GenerateJob().Schedule();
+    }
+}
 ```
 
 ## ❓ Q&A

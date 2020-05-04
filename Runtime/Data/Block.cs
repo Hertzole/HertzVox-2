@@ -3,9 +3,9 @@ using Unity.Mathematics;
 
 namespace Hertzole.HertzVox
 {
-    public struct Block : IEquatable<Block>, IEquatable<ushort>
+    public struct Block : IEquatable<Block>, IEquatable<int>
     {
-        public ushort id;
+        public int id;
 
         [NonSerialized]
         internal int topTexture;
@@ -39,7 +39,7 @@ namespace Hertzole.HertzVox
         [NonSerialized]
         public bool connectToSame;
 
-        public Block(ushort id)
+        public Block(int id)
         {
             this.id = id;
 
@@ -60,7 +60,7 @@ namespace Hertzole.HertzVox
             connectToSame = false;
         }
 
-        public Block(ushort id, int topTexture, int bottomTexture, int northTexture, int southTexture, int eastTexture, int westTexture) : this(id)
+        public Block(int id, int topTexture, int bottomTexture, int northTexture, int southTexture, int eastTexture, int westTexture) : this(id)
         {
             this.topTexture = topTexture;
             this.bottomTexture = bottomTexture;
@@ -70,7 +70,7 @@ namespace Hertzole.HertzVox
             this.westTexture = westTexture;
         }
 
-        public Block(ushort id, BaseConfig config)
+        public Block(int id, BaseConfig config)
         {
             this.id = id;
 
@@ -124,7 +124,7 @@ namespace Hertzole.HertzVox
             return other.id == id;
         }
 
-        public bool Equals(ushort other)
+        public bool Equals(int other)
         {
             return other == id;
         }
@@ -139,12 +139,12 @@ namespace Hertzole.HertzVox
             return !(left == right);
         }
 
-        public static implicit operator Block(ushort id)
+        public static implicit operator Block(int id)
         {
             return BlockProvider.GetBlock(id);
         }
 
-        public static implicit operator ushort(Block block)
+        public static implicit operator int(Block block)
         {
             return block.id;
         }

@@ -14,27 +14,27 @@ namespace Hertzole.HertzVox
         public int size;
         [ReadOnly]
         [DeallocateOnJobCompletion]
-        public NativeArray<ushort> blocks;
+        public NativeArray<int> blocks;
         [ReadOnly]
-        public NativeHashMap<ushort, Block> blockMap;
-        [ReadOnly]
-        [DeallocateOnJobCompletion]
-        public NativeArray<ushort> northBlocks;
+        public NativeHashMap<int, Block> blockMap;
         [ReadOnly]
         [DeallocateOnJobCompletion]
-        public NativeArray<ushort> southBlocks;
+        public NativeArray<int> northBlocks;
         [ReadOnly]
         [DeallocateOnJobCompletion]
-        public NativeArray<ushort> eastBlocks;
+        public NativeArray<int> southBlocks;
         [ReadOnly]
         [DeallocateOnJobCompletion]
-        public NativeArray<ushort> westBlocks;
+        public NativeArray<int> eastBlocks;
         [ReadOnly]
         [DeallocateOnJobCompletion]
-        public NativeArray<ushort> upBlocks;
+        public NativeArray<int> westBlocks;
         [ReadOnly]
         [DeallocateOnJobCompletion]
-        public NativeArray<ushort> downBlocks;
+        public NativeArray<int> upBlocks;
+        [ReadOnly]
+        [DeallocateOnJobCompletion]
+        public NativeArray<int> downBlocks;
 
         [WriteOnly]
         public NativeList<float3> vertices;

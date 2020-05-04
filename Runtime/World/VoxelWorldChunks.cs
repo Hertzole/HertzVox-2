@@ -17,8 +17,6 @@ namespace Hertzole.HertzVox
         private Dictionary<int3, MeshCollider> chunkColliders = new Dictionary<int3, MeshCollider>();
         private Dictionary<int3, MeshRenderer> chunkRenderers = new Dictionary<int3, MeshRenderer>();
 
-        private const int MAX_FRAMES = 3;
-
         public int ChunkCount { get { return chunks.Count; } }
 
         public ICollection<Chunk> Chunks { get { return chunks.Values; } }
@@ -141,7 +139,7 @@ namespace Hertzole.HertzVox
             {
                 ChunkJobData data = jobs.Values[i];
 
-                if (data.urgent || data.job.IsCompleted || data.frameCounter >= MAX_FRAMES)
+                if (data.urgent || data.job.IsCompleted || data.frameCounter >= maxJobFrames)
                 {
                     data.job.Complete();
                     Chunk chunk = chunks[data.position];
@@ -177,7 +175,7 @@ namespace Hertzole.HertzVox
             for (int i = 0; i < jobs.Keys.Length; i++)
             {
                 ChunkJobData data = jobs.Values[i];
-                if (data.urgent || data.job.IsCompleted || data.frameCounter >= MAX_FRAMES)
+                if (data.urgent || data.job.IsCompleted || data.frameCounter >= maxJobFrames)
                 {
                     data.job.Complete();
                     Chunk chunk = chunks[data.position];
@@ -231,7 +229,7 @@ namespace Hertzole.HertzVox
             for (int i = 0; i < jobs.Keys.Length; i++)
             {
                 ChunkJobData data = jobs.Values[i];
-                if (data.urgent || data.job.IsCompleted || data.frameCounter >= MAX_FRAMES)
+                if (data.urgent || data.job.IsCompleted || data.frameCounter >= maxJobFrames)
                 {
                     data.job.Complete();
                     Chunk chunk = chunks[data.position];
