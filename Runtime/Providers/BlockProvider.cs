@@ -15,6 +15,8 @@ namespace Hertzole.HertzVox
 
         private static bool isInitialized;
 
+        public static bool IsInitialized { get { return isInitialized; } }
+
         public const int AIR_TYPE_ID = 0;
         public const string AIR_TYPE = "air";
 

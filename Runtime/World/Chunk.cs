@@ -391,6 +391,11 @@ namespace Hertzole.HertzVox
             return blocks.Get(x, y, z);
         }
 
+        public NativeArray<int> GetAllBlocks(Allocator allocator)
+        {
+            return blocks.GetBlocks(allocator);
+        }
+
         public void RequestRemoval()
         {
             RequestedRemoval = true;

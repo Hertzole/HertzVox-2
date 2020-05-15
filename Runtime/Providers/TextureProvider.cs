@@ -13,6 +13,8 @@ namespace Hertzole.HertzVox
 
         private static bool isInitialized;
 
+        public static bool IsInitialized { get { return isInitialized; } }
+
 #if UNITY_2019_3_OR_NEWER
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void ResetStatics()

@@ -169,20 +169,36 @@ namespace Hertzole.HertzVox
             }
         }
 
-        public static void SaveAllJson(VoxelWorld world, string saveLocation = null)
+        public static void SaveAllChunksToLocation(VoxelWorld world, string location)
         {
-            VoxelJsonData data = GetJsonData(world);
+            List<Chunk> chunks = LoadAllChunks(world, false);
+            string originalPath = SaveLocation;
+            SaveLocation = location;
 
-            string json = JsonUtility.ToJson(data, false);
+            for (int i = 0; i < chunks.Count; i++)
+            {
+                SaveChunk(chunks[i], false);
 
-            Debug.Log(json);
+                chunks[i].Dispose();
+            }
+
+            SaveLocation = originalPath;
         }
 
-        public static VoxelJsonData GetJsonData(VoxelWorld world)
+        //public static void SaveAllJson(VoxelWorld world, string saveLocation = null)
+        //{
+        //    VoxelJsonData data = GetJsonData(world);
+
+        //    string json = JsonUtility.ToJson(data, false);
+
+        //    Debug.Log(json);
+        //}
+
+        public static VoxelJsonData GetJsonData(VoxelWorld world, bool ignoreEmptyChunks = false)
         {
             VoxelJsonData data = new VoxelJsonData(BlockProvider.GetBlockPalette());
 
-            List<Chunk> chunks = LoadAllChunks(world);
+            List<Chunk> chunks = LoadAllChunks(world, ignoreEmptyChunks);
             VoxelJsonChunkData[] chunkData = new VoxelJsonChunkData[chunks.Count];
 
             for (int i = 0; i < chunks.Count; i++)
@@ -235,7 +251,7 @@ namespace Hertzole.HertzVox
             }
         }
 
-        private static List<Chunk> LoadAllChunks(VoxelWorld world)
+        private static List<Chunk> LoadAllChunks(VoxelWorld world, bool ignoreEmptyChunks)
         {
             DumpLoadedChunksToTemp(world);
             List<Chunk> chunks = new List<Chunk>();
@@ -246,6 +262,27 @@ namespace Hertzole.HertzVox
                 for (int i = 0; i < tempChunks.Length; i++)
                 {
                     Chunk chunk = new Chunk(world, int3.zero, new ChunkBlocks(Chunk.CHUNK_SIZE));
+                    if (!ignoreEmptyChunks)
+                    {
+                        NativeArray<int> blocks = chunk.GetAllBlocks(Allocator.Temp);
+                        bool empty = true;
+                        for (int b = 0; b < blocks.Length; b++)
+                        {
+                            if (blocks[b] != BlockProvider.AIR_TYPE_ID)
+                            {
+                                empty = false;
+                                break;
+                            }
+                        }
+
+                        blocks.Dispose();
+
+                        if (empty)
+                        {
+                            continue;
+                        }
+                    }
+
                     if (DeserializeChunk(chunk, tempChunks[i]))
                     {
                         chunks.Add(chunk);

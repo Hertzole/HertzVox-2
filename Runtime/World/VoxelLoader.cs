@@ -18,12 +18,22 @@ namespace Hertzole.HertzVox
 
         private void OnEnable()
         {
-            VoxelWorld.Main.RegisterLoader(this);
+            if (VoxelWorld.Main != null)
+            {
+                VoxelWorld.Main.RegisterLoader(this);
+            }
+            else
+            {
+                Debug.LogWarning("There's no VoxelWorld in the scene for " + gameObject.name + "' to register to.", gameObject);
+            }
         }
 
         private void OnDisable()
         {
-            VoxelWorld.Main.UnregisterLoader(this);
+            if (VoxelWorld.Main != null)
+            {
+                VoxelWorld.Main.UnregisterLoader(this);
+            }
         }
     }
 }

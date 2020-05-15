@@ -15,6 +15,8 @@ namespace Hertzole.HertzVox
         private BlockCollection blockCollection = null;
         [SerializeField]
         private bool clearTempOnDestroy = true;
+        [SerializeField]
+        private bool dontDestroyOnLoad = true;
 
         [Header("Chunks")]
         [SerializeField]
@@ -79,20 +81,26 @@ namespace Hertzole.HertzVox
         public static VoxelWorld Main { get; private set; }
 
 #if UNITY_2019_3_OR_NEWER
-
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStatics()
         {
             Main = null;
         }
-
 #endif
 
         private void OnEnable()
         {
-            if (Main != null && Main != this)
+            if (Main != null)
             {
-                Debug.LogError("Multiple Voxel Worlds! There can only be one.", gameObject);
+                if (!dontDestroyOnLoad && Main != this)
+                {
+                    Debug.LogError("Multiple Voxel Worlds! There can only be one.", gameObject);
+                }
+                else
+                {
+                    Destroy(gameObject);
+                }
+
                 return;
             }
 
@@ -104,9 +112,32 @@ namespace Hertzole.HertzVox
 
         private void Awake()
         {
-            BlockProvider.Initialize(blockCollection);
-            TextureProvider.Initialize(blockCollection);
-            Serialization.Initialize(Application.persistentDataPath + "/HertzVox/");
+            if (dontDestroyOnLoad)
+            {
+                DontDestroyOnLoad(gameObject);
+            }
+
+            // There's a chance there are multiple worlds active currently.
+            // If there is, stop here.
+            if (Main != null && Main != this)
+            {
+                return;
+            }
+
+            if (!BlockProvider.IsInitialized)
+            {
+                BlockProvider.Initialize(blockCollection);
+            }
+
+            if (!TextureProvider.IsInitialized)
+            {
+                TextureProvider.Initialize(blockCollection);
+            }
+
+            if (!Serialization.IsInitialized)
+            {
+                Serialization.Initialize(Application.persistentDataPath + "/HertzVox/");
+            }
 
             Texture2D atlas = TextureProvider.GetAtlas();
 
@@ -139,6 +170,12 @@ namespace Hertzole.HertzVox
 
         private void OnDestroy()
         {
+            // Make sure only the active world disposes of things.
+            if (Main != null && Main != this)
+            {
+                return;
+            }
+
             DisposeJobList(generateJobs);
             DisposeJobList(renderJobs);
             DisposeJobList(colliderJobs);
@@ -472,6 +509,11 @@ namespace Hertzole.HertzVox
                             }
 
                             int3 chunkPosition = new int3(x * Chunk.CHUNK_SIZE, y * Chunk.CHUNK_SIZE, z * Chunk.CHUNK_SIZE);
+
+                            if (renderChunks.Contains(chunkPosition))
+                            {
+                                continue;
+                            }
 
                             bool shouldRender = false;
                             if (x != xMin && z != zMin && x != xMax - 1 && z != zMax - 1)
