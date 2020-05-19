@@ -35,5 +35,16 @@ namespace Hertzole.HertzVox
                 VoxelWorld.Main.UnregisterLoader(this);
             }
         }
+
+        public VoxelLoaderData ToData()
+        {
+            return new VoxelLoaderData()
+            {
+                position = transform.position,
+                singleChunk = singleChunk,
+                chunkDistanceX = chunkDistanceX,
+                chunkDistanceZ = chunkDistanceZ
+            };
+        }
     }
 }

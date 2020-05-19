@@ -4,7 +4,6 @@ using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
-using UnityEngine.Profiling;
 
 namespace Hertzole.HertzVox
 {
@@ -70,9 +69,6 @@ namespace Hertzole.HertzVox
         private NativeHashMap<int3, ChunkJobData> generateJobs;
         private NativeHashMap<int3, ChunkJobData> renderJobs;
         private NativeHashMap<int3, ChunkJobData> colliderJobs;
-
-        private NativeList<int3> renderChunks;
-        private NativeList<int3> chunksToRemove;
 
         private List<VoxelLoader> loaders = new List<VoxelLoader>();
 
@@ -174,6 +170,11 @@ namespace Hertzole.HertzVox
                 return;
             }
 
+            if (generatingChunks)
+            {
+                FinishGeneratingChunks();
+            }
+
             DisposeJobList(generateJobs);
             DisposeJobList(renderJobs);
             DisposeJobList(colliderJobs);
@@ -222,10 +223,10 @@ namespace Hertzole.HertzVox
                 }
             }
 
-            if (Time.unscaledTime >= nextChunkGenerate)
+            if (!generatingChunks && Time.unscaledTime >= nextChunkGenerate)
             {
                 nextChunkGenerate = Time.unscaledTime + chunkGenerateDelay;
-                GenerateChunksAroundTargets();
+                StartGeneratingChunks();
             }
 
             ProcessChunks();
@@ -243,8 +244,16 @@ namespace Hertzole.HertzVox
 
         private void LateUpdate()
         {
-            int numChunks = 0;
+            if (generatingChunks)
+            {
+                generatingChunksFrame++;
+                if (generateChunksJob.IsCompleted || generatingChunksFrame >= maxJobFrames)
+                {
+                    FinishGeneratingChunks();
+                }
+            }
 
+            int numChunks = 0;
             while (generateQueue.Count > 0)
             {
                 if (generator == null)
@@ -541,102 +550,6 @@ namespace Hertzole.HertzVox
             }
 
             chunks.Clear();
-        }
-
-        private void GenerateChunksAroundTargets()
-        {
-            if (loaders.Count == 0)
-            {
-                return;
-            }
-
-            renderChunks.Clear();
-
-            for (int i = 0; i < loaders.Count; i++)
-            {
-                VoxelLoader loader = loaders[i];
-
-                if (loader == null)
-                {
-                    continue;
-                }
-
-                int3 targetPosition = Helpers.WorldToChunk(loader.transform.position, Chunk.CHUNK_SIZE);
-
-                int xMin = (loader.SingleChunk ? 0 : -loader.ChunkDistanceX) + targetPosition.x - 1;
-                int zMin = (loader.SingleChunk ? 0 : -loader.ChunkDistanceZ) + targetPosition.z - 1;
-                int xMax = (loader.SingleChunk ? 1 : loader.ChunkDistanceX) + targetPosition.x + 1;
-                int zMax = (loader.SingleChunk ? 1 : loader.ChunkDistanceZ) + targetPosition.z + 1;
-
-                Profiler.BeginSample("Create chunk region");
-                for (int x = xMin; x < xMax; x++)
-                {
-                    for (int z = zMin; z < zMax; z++)
-                    {
-                        for (int y = 0; y < maxY; y++)
-                        {
-                            if ((!infiniteX && (x < minX || x > maxX)) || (!infiniteZ && (z < minZ || z > maxZ)))
-                            {
-                                continue;
-                            }
-
-                            int3 chunkPosition = new int3(x * Chunk.CHUNK_SIZE, y * Chunk.CHUNK_SIZE, z * Chunk.CHUNK_SIZE);
-
-                            if (renderChunks.Contains(chunkPosition))
-                            {
-                                continue;
-                            }
-
-                            bool shouldRender = false;
-                            if (x != xMin && z != zMin && x != xMax - 1 && z != zMax - 1)
-                            {
-                                shouldRender = true;
-                            }
-
-                            float priority = math.distancesq(chunkPosition, targetPosition);
-                            if (!chunks.TryGetValue(chunkPosition, out Chunk chunk))
-                            {
-                                chunk = CreateChunk(chunkPosition);
-                                chunks.Add(chunkPosition, chunk);
-                                chunk.NeedsTerrain = !Serialization.LoadChunk(chunk, true);
-                                if (chunk.NeedsTerrain)
-                                {
-                                    AddToQueue(generateQueue, chunkPosition, priority);
-                                }
-                                else
-                                {
-                                    if (shouldRender)
-                                    {
-                                        TryToQueueChunkRender(chunk, priority);
-                                    }
-                                }
-                            }
-                            else if (chunk.HasTerrain && !chunk.UpdatingRenderer && !chunk.HasRender && shouldRender)
-                            {
-                                TryToQueueChunkRender(chunk, priority);
-                            }
-
-                            renderChunks.Add(chunkPosition);
-                            chunk.render = shouldRender;
-                        }
-                    }
-                }
-                Profiler.EndSample();
-            }
-
-            Profiler.BeginSample("Remove chunks stage 1");
-            chunksToRemove.Clear();
-            if (chunks.Count != renderChunks.Length)
-            {
-                foreach (int3 chunk in chunks.Keys)
-                {
-                    if (!renderChunks.Contains(chunk))
-                    {
-                        DestroyChunk(chunks[chunk]);
-                    }
-                }
-            }
-            Profiler.EndSample();
         }
 
         public void RegisterLoader(VoxelLoader loader)

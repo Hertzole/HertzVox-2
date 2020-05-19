@@ -73,19 +73,6 @@ namespace Hertzole.HertzVox
             dirty = true;
         }
 
-        [Obsolete("Handle neighbors yourself.")]
-        public void UpdateChunkAndNeighbors(bool urgent = false)
-        {
-            VoxLogger.Log("Chunk : UpdateChunkAndNeighbors Urgent " + urgent + " | " + ToString());
-            UpdateChunk(urgent);
-        }
-
-        [Obsolete("Use UpdateChunk instead.")]
-        internal void OnlyUpdateThis(bool urgent = false)
-        {
-            UpdateChunk(urgent);
-        }
-
         public void UpdateChunkIfNeeded()
         {
             if (mesh == null)

@@ -10,6 +10,20 @@ namespace Hertzole.HertzVox
 {
     public partial class VoxelWorld
     {
+        private bool generatingChunks = false;
+
+        private int generatingChunksFrame;
+
+        private NativeArray<VoxelLoaderData> voxelLoaderData;
+        private NativeArray<int3> loadedChunks;
+
+        private NativeList<int3> tempChunksToRemove;
+        private NativeList<int3> chunksToRemove;
+        private NativeList<int3> renderChunks;
+        private NativeHashMap<int3, ChunkData> tempRenderChunks;
+
+        private JobHandle generateChunksJob;
+
         private Stack<MeshCollider> pooledColliders = new Stack<MeshCollider>();
         private Stack<MeshRenderer> pooledRenderers = new Stack<MeshRenderer>();
 
@@ -20,6 +34,111 @@ namespace Hertzole.HertzVox
         public int ChunkCount { get { return chunks.Count; } }
 
         public ICollection<Chunk> Chunks { get { return chunks.Values; } }
+
+        private void StartGeneratingChunks()
+        {
+            if (generatingChunks)
+            {
+                return;
+            }
+
+            generatingChunks = true;
+            generatingChunksFrame = 0;
+
+            voxelLoaderData = new NativeArray<VoxelLoaderData>(loaders.Count, Allocator.TempJob);
+            loadedChunks = new NativeArray<int3>(chunks.Count, Allocator.TempJob);
+            tempChunksToRemove = new NativeList<int3>(Allocator.TempJob);
+            tempRenderChunks = new NativeHashMap<int3, ChunkData>(0, Allocator.TempJob);
+
+            for (int i = 0; i < loaders.Count; i++)
+            {
+                voxelLoaderData[i] = loaders[i].ToData();
+            }
+
+            int index = 0;
+            foreach (KeyValuePair<int3, Chunk> chunk in chunks)
+            {
+                loadedChunks[index] = chunk.Key;
+                index++;
+            }
+
+            LoadChunksJob job = new LoadChunksJob()
+            {
+                chunkSize = Chunk.CHUNK_SIZE,
+                maxY = maxY,
+                worldSizeX = new int2(minX, maxX),
+                worldSizeZ = new int2(minZ, maxZ),
+                infiniteX = infiniteX,
+                infiniteZ = infiniteZ,
+                loaders = voxelLoaderData,
+                loadedChunks = loadedChunks,
+                chunksToRemove = tempChunksToRemove,
+                renderChunks = tempRenderChunks
+            };
+
+            generateChunksJob = job.Schedule();
+        }
+
+        private void FinishGeneratingChunks()
+        {
+            if (!generatingChunks)
+            {
+                return;
+            }
+
+            generateChunksJob.Complete();
+
+            voxelLoaderData.Dispose();
+            loadedChunks.Dispose();
+
+            NativeArray<int3> renChunksKeys = tempRenderChunks.GetKeyArray(Allocator.Temp);
+            NativeArray<ChunkData> renChunksValues = tempRenderChunks.GetValueArray(Allocator.Temp);
+
+            renderChunks.Clear();
+            renderChunks.AddRange(renChunksKeys);
+
+            for (int i = 0; i < renChunksKeys.Length; i++)
+            {
+                int3 chunkPos = renChunksKeys[i];
+                bool shouldRender = renChunksValues[i].render;
+                float priority = renChunksValues[i].priority;
+                if (!chunks.TryGetValue(chunkPos, out Chunk chunk))
+                {
+                    chunk = CreateChunk(chunkPos);
+                    chunks.Add(chunkPos, chunk);
+                    chunk.NeedsTerrain = !Serialization.LoadChunk(chunk, true);
+                    if (chunk.NeedsTerrain)
+                    {
+                        AddToQueue(generateQueue, chunkPos, priority);
+                    }
+                    else if (shouldRender)
+                    {
+                        TryToQueueChunkRender(chunk, priority);
+                    }
+                }
+                else if (chunk.HasTerrain && !chunk.UpdatingRenderer && !chunk.HasRender && shouldRender)
+                {
+                    TryToQueueChunkRender(chunk, priority);
+                }
+
+                chunk.render = shouldRender;
+            }
+
+            renChunksKeys.Dispose();
+            renChunksValues.Dispose();
+
+            tempRenderChunks.Dispose();
+
+            chunksToRemove.Clear();
+
+            for (int i = 0; i < tempChunksToRemove.Length; i++)
+            {
+                DestroyChunk(chunks[tempChunksToRemove[i]]);
+            }
+
+            tempChunksToRemove.Dispose();
+            generatingChunks = false;
+        }
 
         private void AddToQueue(FastPriorityQueue<ChunkNode> queue, int3 position, float priority)
         {
