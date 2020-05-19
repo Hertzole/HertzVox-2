@@ -155,28 +155,20 @@ namespace Hertzole.HertzVox
         /// <summary>
         /// Casts a ray into the world.
         /// </summary>
-        /// <param name="ray"></param>
-        /// <param name="hit"></param>
-        /// <param name="world"></param>
-        /// <param name="range"></param>
+        /// <param name="ray">The ray to cast from.</param>
+        /// <param name="hit">The output hit.</param>
+        /// <param name="range">How far the ray reaches.</param>
+        /// <param name="stopAtZero">Stop if the ray goes below Y position 0.</param>
+        /// <param name="world">The world to cast the ray in.</param>
         /// <returns>True if it hit something.</returns>
-        public static bool Raycast(Ray ray, out VoxelRaycastHit hit, float range, VoxelWorld world = null)
+        public static bool Raycast(Ray ray, out VoxelRaycastHit hit, float range, bool stopAtZero, VoxelWorld world = null)
         {
             if (world == null)
             {
                 world = VoxelWorld.Main;
                 if (world == null)
                 {
-                    Debug.LogError("There's no world to raycast in.");
-                    hit = new VoxelRaycastHit()
-                    {
-                        adjacentPosition = int3.zero,
-                        block = BlockProvider.GetBlock(BlockProvider.AIR_TYPE),
-                        blockPosition = int3.zero,
-                        direction = float3.zero,
-                        scenePosition = Vector3.zero
-                    };
-                    return false;
+                    throw new System.NullReferenceException("There's no world to raycast in.");
                 }
             }
 
@@ -252,7 +244,7 @@ namespace Hertzole.HertzVox
                     hitSomething = true;
                 }
 
-                if (bPos.y <= 0)
+                if (bPos.y <= 0 && stopAtZero)
                 {
                     break;
                 }
@@ -261,7 +253,7 @@ namespace Hertzole.HertzVox
                 // if not does it all again starting from the new position
             }
 
-            if (!hitSomething)
+            if (!hitSomething && stopAtZero)
             {
                 bPos.y = 0;
                 adjacentBPos.y = 0;

@@ -148,5 +148,10 @@ namespace Hertzole.HertzVox
         {
             return block.id;
         }
+
+        public override string ToString()
+        {
+            return "Block (" + id + ")";
+        }
     }
 }

@@ -59,8 +59,6 @@ namespace Hertzole.HertzVox
 
         private float nextChunkGenerate;
 
-        private bool showDebugInfo = false;
-
         private Material mat;
 
         private IVoxGeneration generator;
@@ -241,15 +239,6 @@ namespace Hertzole.HertzVox
             ProcessColliderJobs(jobsToRemove);
             jobsToRemove.Dispose();
             ProcessChunkRemoval();
-
-#if DEBUG
-#if !ENABLE_INPUT_SYSTEM
-            if (Input.GetKeyDown(KeyCode.F12))
-            {
-                showDebugInfo = !showDebugInfo;
-            }
-#endif
-#endif
         }
 
         private void LateUpdate()
@@ -356,7 +345,14 @@ namespace Hertzole.HertzVox
                 int yy = Helpers.Mod(position.y, Chunk.CHUNK_SIZE);
                 int zz = Helpers.Mod(position.z, Chunk.CHUNK_SIZE);
 
-                chunk.SetBlock(xx, yy, zz, block);
+                chunk.SetBlock(xx, yy, zz, block, urgent);
+                bool updateNorth = zz == Chunk.CHUNK_SIZE - 1;
+                bool updateSouth = zz == 0;
+                bool updateEast = xx == Chunk.CHUNK_SIZE - 1;
+                bool updateWest = xx == 0;
+                bool updateTop = yy == Chunk.CHUNK_SIZE - 1;
+                bool updateBottom = yy == 0;
+                UpdateChunkNeighbors(chunkPos, updateNorth, updateSouth, updateEast, updateWest, updateTop, updateBottom);
             }
         }
 
@@ -381,6 +377,8 @@ namespace Hertzole.HertzVox
 
         public void SetBlocks(int fromX, int fromY, int fromZ, int toX, int toY, int toZ, Block block)
         {
+            VoxLogger.Log("VoxelWorld : SetBlocks " + block);
+
             FixValues(ref fromX, ref toX);
             FixValues(ref fromY, ref toY);
             FixValues(ref fromZ, ref toZ);
@@ -404,9 +402,11 @@ namespace Hertzole.HertzVox
                     {
                         bool ghostChunk = false;
                         int3 chunkPosition = new int3(cx, cy, cz);
+                        VoxLogger.Log("VoxelWorld : SetBlocks " + block + " | Update chunk at " + chunkPosition + ".");
                         Chunk chunk = GetChunk(chunkPosition);
                         if (chunk == null)
                         {
+                            VoxLogger.Log("VoxelWorld : SetBlocks " + block + " | Chunk is ghost chunk.");
                             ghostChunk = true;
                             chunk = CreateChunk(chunkPosition);
                             chunks.Add(chunkPosition, chunk);
@@ -417,17 +417,86 @@ namespace Hertzole.HertzVox
                         int3 from = new int3(minX, minY, minZ);
                         int3 to = new int3(maxX, maxY, maxZ);
 
+                        // Only update if it's placing blocks on the edges of the chunk and
+                        // if they are the last/first ones in the loop. We don't need the chunks
+                        // to update each other.
+                        bool updateNorth = (from.z == Chunk.CHUNK_SIZE - 1 || to.z == Chunk.CHUNK_SIZE - 1) && cz == chunkTo.z;
+                        bool updateSouth = (from.z == 0 || to.z == 0) && cz == chunkFrom.z;
+                        bool updateEast = (from.x == Chunk.CHUNK_SIZE - 1 || to.x == Chunk.CHUNK_SIZE - 1) && cx == chunkTo.x;
+                        bool updateWest = (from.x == 0 || to.x == 0) && cx == chunkFrom.x;
+                        bool updateTop = (from.y == Chunk.CHUNK_SIZE - 1 || to.y == Chunk.CHUNK_SIZE - 1) && cy == chunkTo.y;
+                        bool updateBottom = (from.y == 0 || to.y == 0) && cy == chunkFrom.y;
+
                         chunk.SetRangeRaw(from, to, block);
                         if (!ghostChunk)
                         {
+                            // Only update this chunk.
                             chunk.UpdateChunk();
+
+                            UpdateChunkNeighbors(chunkPosition, updateNorth, updateSouth, updateEast, updateWest, updateTop, updateBottom);
                         }
                         else
                         {
+                            VoxLogger.Log("VoxelWorld : SetBlocks " + block + " | Saving ghost chunk " + chunk + ".");
                             Serialization.SaveChunk(chunk, true);
                             DestroyChunk(chunk);
                         }
                     }
+                }
+            }
+        }
+
+        public void UpdateChunkNeighbors(int3 chunkPosition, bool updateNorth, bool updateSouth, bool updateEast, bool updateWest, bool updateTop, bool updateBottom)
+        {
+            // Only update neighbor chunks if they need to be updated.
+            if (updateNorth)
+            {
+                int3 northPos = new int3(chunkPosition.x, chunkPosition.y, chunkPosition.z + Chunk.CHUNK_SIZE);
+                // Use TryGetValue instead because then we can get the chunk and also check if it exists, 
+                // instead of getting the chunk again when calling update.
+                if (chunks.TryGetValue(northPos, out Chunk northChunk) && northChunk.HasTerrain)
+                {
+                    northChunk.UpdateChunk();
+                }
+            }
+            if (updateSouth)
+            {
+                int3 southPos = new int3(chunkPosition.x, chunkPosition.y, chunkPosition.z - Chunk.CHUNK_SIZE);
+                if (chunks.TryGetValue(southPos, out Chunk southChunk) && southChunk.HasTerrain)
+                {
+                    southChunk.UpdateChunk();
+                }
+            }
+            if (updateEast)
+            {
+                int3 eastPos = new int3(chunkPosition.x + Chunk.CHUNK_SIZE, chunkPosition.y, chunkPosition.z);
+                if (chunks.TryGetValue(eastPos, out Chunk eastChunk) && eastChunk.HasTerrain)
+                {
+                    eastChunk.UpdateChunk();
+                }
+            }
+            if (updateWest)
+            {
+                int3 westPos = new int3(chunkPosition.x - Chunk.CHUNK_SIZE, chunkPosition.y, chunkPosition.z);
+                if (chunks.TryGetValue(westPos, out Chunk westChunk) && westChunk.HasTerrain)
+                {
+                    westChunk.UpdateChunk();
+                }
+            }
+            if (updateTop)
+            {
+                int3 topPos = new int3(chunkPosition.x, chunkPosition.y + Chunk.CHUNK_SIZE, chunkPosition.z);
+                if (chunks.TryGetValue(topPos, out Chunk topChunk) && topChunk.HasTerrain)
+                {
+                    topChunk.UpdateChunk();
+                }
+            }
+            if (updateBottom)
+            {
+                int3 bottomPos = new int3(chunkPosition.x, chunkPosition.y - Chunk.CHUNK_SIZE, chunkPosition.z);
+                if (chunks.TryGetValue(bottomPos, out Chunk bottomChunk) && bottomChunk.HasTerrain)
+                {
+                    bottomChunk.UpdateChunk();
                 }
             }
         }
@@ -453,6 +522,9 @@ namespace Hertzole.HertzVox
             return chunks.TryGetValue(position, out chunk);
         }
 
+        /// <summary>
+        /// Unloads all the chunks in the world and loads new ones in the temp folder.
+        /// </summary>
         public void RefreshWorld()
         {
             generateQueue.Clear();
@@ -590,7 +662,6 @@ namespace Hertzole.HertzVox
         }
 
 #if UNITY_EDITOR
-
         private void OnDrawGizmos()
         {
             foreach (KeyValuePair<int3, Chunk> chunk in chunks)
@@ -598,35 +669,6 @@ namespace Hertzole.HertzVox
                 Gizmos.DrawWireCube(new Vector3(chunk.Key.x + (Chunk.CHUNK_SIZE / 2), chunk.Key.y + (Chunk.CHUNK_SIZE / 2), chunk.Key.z + (Chunk.CHUNK_SIZE / 2)), Vector3.one * Chunk.CHUNK_SIZE);
             }
         }
-
-#endif
-
-#if DEBUG
-
-        private void OnGUI()
-        {
-            if (showDebugInfo)
-            {
-                GUILayout.BeginArea(new Rect(Screen.width - 250, Screen.height - 300, 250, 300), GUI.skin.box);
-                GUILayout.BeginVertical();
-
-                GUILayout.Label("Chunks: " + chunks.Count);
-                GUILayout.Label("Render Chunks: " + renderChunks.Length);
-                GUILayout.Label("Remove Chunks: " + chunksToRemove.Length);
-                GUILayout.Label("------");
-                GUILayout.Label("Generate Queue: " + generateQueue.Count + " (Max: " + generateQueue.MaxSize + ")");
-                GUILayout.Label("Render Queue: " + renderQueue.Count + " (Max: " + renderQueue.MaxSize + ")");
-                GUILayout.Label("Collider Queue: " + colliderQueue.Count + " (Max: " + colliderQueue.MaxSize + ")");
-                GUILayout.Label("------");
-                GUILayout.Label("Generate Jobs: " + generateJobs.Count());
-                GUILayout.Label("Render Jobs: " + renderJobs.Count());
-                GUILayout.Label("Collider Jobs: " + colliderJobs.Count());
-
-                GUILayout.EndVertical();
-                GUILayout.EndArea();
-            }
-        }
-
 #endif
     }
 }

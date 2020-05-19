@@ -65,7 +65,7 @@ namespace Hertzole.HertzVox
 
             string path = SaveFile(chunk.position, temporary);
 
-        writing:
+            writing:
             try
             {
                 using (BinaryWriter w = new BinaryWriter(File.Open(path, FileMode.OpenOrCreate)))
@@ -194,6 +194,18 @@ namespace Hertzole.HertzVox
         //    Debug.Log(json);
         //}
 
+        public static string ToJson(VoxelWorld world, bool ignoreEmptyChunks = false, bool prettyPrint = false)
+        {
+            VoxelJsonData data = GetJsonData(world, ignoreEmptyChunks);
+            return ToJson(data, prettyPrint);
+        }
+
+        public static string ToJson(VoxelJsonData data, bool prettyPrint = false)
+        {
+            string json = JsonUtility.ToJson(data, prettyPrint);
+            return json;
+        }
+
         public static VoxelJsonData GetJsonData(VoxelWorld world, bool ignoreEmptyChunks = false)
         {
             VoxelJsonData data = new VoxelJsonData(BlockProvider.GetBlockPalette());
@@ -249,6 +261,8 @@ namespace Hertzole.HertzVox
                     WriteChunkInfo(w, chunkPosition, palette, blocks);
                 }
             }
+
+            world.RefreshWorld();
         }
 
         private static List<Chunk> LoadAllChunks(VoxelWorld world, bool ignoreEmptyChunks)

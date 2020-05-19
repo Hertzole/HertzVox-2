@@ -16,8 +16,6 @@ namespace Hertzole.HertzVox
         public bool urgentUpdate;
         public bool changed;
         public bool render;
-        private bool onlyThis;
-        private bool updateNeighbors;
 
         private bool disposed = false;
 
@@ -70,29 +68,29 @@ namespace Hertzole.HertzVox
 
         public void UpdateChunk(bool urgent = false)
         {
+            VoxLogger.Log("Chunk : UpdateChunk Urgent " + urgent + " | " + ToString());
             urgentUpdate = urgent;
             dirty = true;
-            onlyThis = false;
-            updateNeighbors = false;
         }
 
+        [Obsolete("Handle neighbors yourself.")]
         public void UpdateChunkAndNeighbors(bool urgent = false)
         {
+            VoxLogger.Log("Chunk : UpdateChunkAndNeighbors Urgent " + urgent + " | " + ToString());
             UpdateChunk(urgent);
-            updateNeighbors = true;
         }
 
+        [Obsolete("Use UpdateChunk instead.")]
         internal void OnlyUpdateThis(bool urgent = false)
         {
             UpdateChunk(urgent);
-            onlyThis = true;
         }
 
         public void UpdateChunkIfNeeded()
         {
             if (mesh == null)
             {
-                OnlyUpdateThis(false);
+                UpdateChunk(false);
             }
         }
 
@@ -130,16 +128,6 @@ namespace Hertzole.HertzVox
 
             NativeArray<int> downBlocks = world.TryGetChunk(new int3(position.x, position.y - CHUNK_SIZE, position.z), out Chunk downChunk) ?
                 downChunk.blocks.GetBlocks(Allocator.TempJob) : BlockProvider.GetEmptyBlocks(Allocator.TempJob);
-
-            if (!onlyThis && updateNeighbors)
-            {
-                northChunk?.OnlyUpdateThis(true);
-                southChunk?.OnlyUpdateThis(true);
-                eastChunk?.OnlyUpdateThis(true);
-                westChunk?.OnlyUpdateThis(true);
-                topChunk?.OnlyUpdateThis(true);
-                downChunk?.OnlyUpdateThis(true);
-            }
 
             return new BuildChunkJob()
             {
@@ -347,7 +335,7 @@ namespace Hertzole.HertzVox
         public void SetBlock(int x, int y, int z, Block block, bool urgent = true)
         {
             SetBlockRaw(x, y, z, block);
-            UpdateChunkAndNeighbors(urgent);
+            UpdateChunk(urgent);
         }
 
         public void SetBlock(int3 position, Block block, bool urgent = true)
@@ -369,7 +357,7 @@ namespace Hertzole.HertzVox
         public void SetRange(int3 from, int3 to, Block block)
         {
             SetRangeRaw(from, to, block);
-            UpdateChunkAndNeighbors();
+            UpdateChunk(false);
         }
 
         public void SetRangeRaw(int3 from, int3 to, Block block)
