@@ -1,5 +1,6 @@
 ﻿using Priority_Queue;
 using System.Collections.Generic;
+using System.Linq;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
@@ -10,8 +11,10 @@ namespace Hertzole.HertzVox
 {
     public partial class VoxelWorld
     {
+        // Check to see if the world is currently generating chunks.
         private bool generatingChunks = false;
 
+        // How many frames the generate chunks job has taken.
         private int generatingChunksFrame;
 
         private NativeArray<VoxelLoaderData> voxelLoaderData;
@@ -34,6 +37,121 @@ namespace Hertzole.HertzVox
         public int ChunkCount { get { return chunks.Count; } }
 
         public ICollection<Chunk> Chunks { get { return chunks.Values; } }
+
+        private void UpdateChunks()
+        {
+            if (!useRendererPrefab)
+            {
+                for (int i = 0; i < renderChunks.Length; i++)
+                {
+                    chunks[renderChunks[i]].Draw(mat);
+                }
+            }
+
+            if (!generatingChunks && Time.unscaledTime >= nextChunkGenerate)
+            {
+                nextChunkGenerate = Time.unscaledTime + chunkGenerateDelay;
+                StartGeneratingChunks();
+            }
+
+            ProcessChunks();
+
+            NativeList<int3> jobsToRemove = new NativeList<int3>(Allocator.Temp);
+
+            ProcessGeneratorJobs(jobsToRemove);
+            jobsToRemove.Clear();
+            ProcessRenderJobs(jobsToRemove);
+            jobsToRemove.Clear();
+            ProcessColliderJobs(jobsToRemove);
+            jobsToRemove.Dispose();
+            ProcessChunkRemoval();
+        }
+
+        private void LateUpdateChunks()
+        {
+            if (generatingChunks)
+            {
+                generatingChunksFrame++;
+                if (generateChunksJob.IsCompleted || generatingChunksFrame >= maxJobFrames)
+                {
+                    FinishGeneratingChunks();
+                }
+            }
+
+            int numChunks = 0;
+            while (generateQueue.Count > 0)
+            {
+                if (generator == null)
+                {
+                    break;
+                }
+
+                if (numChunks > maxGenerateJobs)
+                {
+                    break;
+                }
+
+                ChunkNode node = generateQueue.Dequeue();
+
+                if (chunks.TryGetValue(node.position, out Chunk chunk))
+                {
+                    if (generateJobs.ContainsKey(chunk.position) || !chunk.NeedsTerrain || chunk.RequestedRemoval || chunk.GeneratingTerrain)
+                    {
+                        continue;
+                    }
+
+                    chunk.StartGenerating(new NativeArray<int>(Chunk.CHUNK_SIZE * Chunk.CHUNK_SIZE * Chunk.CHUNK_SIZE, Allocator.TempJob));
+
+                    JobHandle job = generator.GenerateChunk(chunk.temporaryBlocks, chunk.position);
+                    ChunkJobData data = new ChunkJobData(node.position, job, node.Priority, false);
+                    generateJobs.Add(chunk.position, data);
+
+                    numChunks++;
+                }
+            }
+
+            numChunks = 0;
+
+            while (renderQueue.Count > 0)
+            {
+                if (numChunks > maxRenderJobs)
+                {
+                    break;
+                }
+
+                ChunkNode node = renderQueue.Dequeue();
+                if (chunks.TryGetValue(node.position, out Chunk chunk))
+                {
+                    if (AddChunkToRenderList(chunk, node.Priority))
+                    {
+                        numChunks++;
+                    }
+                }
+            }
+
+            numChunks = 0;
+
+            while (colliderQueue.Count > 0)
+            {
+                if (numChunks > maxColliderJobs)
+                {
+                    break;
+                }
+
+                ChunkNode node = colliderQueue.Dequeue();
+                if (chunks.TryGetValue(node.position, out Chunk chunk))
+                {
+                    if (colliderJobs.ContainsKey(node.position) || chunk.RequestedRemoval)
+                    {
+                        continue;
+                    }
+
+                    JobHandle job = chunk.ScheduleColliderJob();
+                    colliderJobs.Add(node.position, new ChunkJobData(node.position, job, node.Priority, false));
+                    numChunks++;
+                }
+            }
+        }
 
         private void StartGeneratingChunks()
         {
@@ -116,8 +234,22 @@ namespace Hertzole.HertzVox
                         TryToQueueChunkRender(chunk, priority);
                     }
                 }
+                else if (!shouldRender && chunkRenderers.TryGetValue(chunkPos, out MeshRenderer renderer))
+                {
+                    // This is used for removing edge chunks that shouldn't be rendered. 
+                    // If we don't do this their meshes will stick around but not be properly updated.
+                    PoolChunkRenderer(renderer);
+                    chunkRenderers.Remove(chunkPos);
+                }
+                else if (shouldRender && chunk.HasRender && !chunkRenderers.ContainsKey(chunkPos))
+                {
+                    // This is in case there are chunks that should render but are missing renderers.
+                    // Missing renderers can be caused by the method above.
+                    CreateChunkRenderer(chunkPos, chunk.mesh);
+                }
                 else if (chunk.HasTerrain && !chunk.UpdatingRenderer && !chunk.HasRender && shouldRender)
                 {
+                    // The chunk is new and needs a mesh.
                     TryToQueueChunkRender(chunk, priority);
                 }
 
@@ -138,6 +270,82 @@ namespace Hertzole.HertzVox
 
             tempChunksToRemove.Dispose();
             generatingChunks = false;
+        }
+
+        public void UpdateChunkNeighbors(int3 chunkPosition, bool updateNorth, bool updateSouth, bool updateEast, bool updateWest, bool updateTop, bool updateBottom)
+        {
+            // Only update neighbor chunks if they need to be updated.
+            if (updateNorth)
+            {
+                int3 northPos = new int3(chunkPosition.x, chunkPosition.y, chunkPosition.z + Chunk.CHUNK_SIZE);
+                // Use TryGetValue instead because then we can get the chunk and also check if it exists, 
+                // instead of getting the chunk again when calling update.
+                if (chunks.TryGetValue(northPos, out Chunk northChunk) && northChunk.HasTerrain)
+                {
+                    northChunk.UpdateChunk();
+                }
+            }
+            if (updateSouth)
+            {
+                int3 southPos = new int3(chunkPosition.x, chunkPosition.y, chunkPosition.z - Chunk.CHUNK_SIZE);
+                if (chunks.TryGetValue(southPos, out Chunk southChunk) && southChunk.HasTerrain)
+                {
+                    southChunk.UpdateChunk();
+                }
+            }
+            if (updateEast)
+            {
+                int3 eastPos = new int3(chunkPosition.x + Chunk.CHUNK_SIZE, chunkPosition.y, chunkPosition.z);
+                if (chunks.TryGetValue(eastPos, out Chunk eastChunk) && eastChunk.HasTerrain)
+                {
+                    eastChunk.UpdateChunk();
+                }
+            }
+            if (updateWest)
+            {
+                int3 westPos = new int3(chunkPosition.x - Chunk.CHUNK_SIZE, chunkPosition.y, chunkPosition.z);
+                if (chunks.TryGetValue(westPos, out Chunk westChunk) && westChunk.HasTerrain)
+                {
+                    westChunk.UpdateChunk();
+                }
+            }
+            if (updateTop)
+            {
+                int3 topPos = new int3(chunkPosition.x, chunkPosition.y + Chunk.CHUNK_SIZE, chunkPosition.z);
+                if (chunks.TryGetValue(topPos, out Chunk topChunk) && topChunk.HasTerrain)
+                {
+                    topChunk.UpdateChunk();
+                }
+            }
+            if (updateBottom)
+            {
+                int3 bottomPos = new int3(chunkPosition.x, chunkPosition.y - Chunk.CHUNK_SIZE, chunkPosition.z);
+                if (chunks.TryGetValue(bottomPos, out Chunk bottomChunk) && bottomChunk.HasTerrain)
+                {
+                    bottomChunk.UpdateChunk();
+                }
+            }
+        }
+
+        private void FixValues(ref int start, ref int end)
+        {
+            if (start > end)
+            {
+                int temp = start;
+                start = end;
+                end = temp;
+            }
+        }
+
+        public Chunk GetChunk(int3 position)
+        {
+            chunks.TryGetValue(position, out Chunk chunk);
+            return chunk;
+        }
+
+        public bool TryGetChunk(int3 position, out Chunk chunk)
+        {
+            return chunks.TryGetValue(position, out chunk);
         }
 
         private void AddToQueue(FastPriorityQueue<ChunkNode> queue, int3 position, float priority)
@@ -301,18 +509,7 @@ namespace Hertzole.HertzVox
 
                     if (useRendererPrefab)
                     {
-                        if (!chunkRenderers.TryGetValue(data.position, out MeshRenderer renderer))
-                        {
-                            renderer = GetChunkRenderer();
-                            chunkRenderers.Add(data.position, renderer);
-#if DEBUG
-                            renderer.gameObject.name = "Renderer [" + data.position.x + "," + data.position.y + "," + data.position.z + "]";
-#endif
-                        }
-
-                        MeshFilter filter = renderer.GetComponent<MeshFilter>();
-                        Mesh originalMesh = filter.mesh;
-                        filter.mesh = chunk.CompleteMeshUpdate(originalMesh);
+                        CreateChunkRenderer(data.position, chunk.CompleteMeshUpdate(chunk.mesh));
                     }
                     else
                     {
@@ -467,6 +664,23 @@ namespace Hertzole.HertzVox
         {
             collider.gameObject.SetActive(false);
             pooledColliders.Push(collider);
+        }
+
+        private MeshRenderer CreateChunkRenderer(int3 position, Mesh mesh)
+        {
+            if (!chunkRenderers.TryGetValue(position, out MeshRenderer renderer))
+            {
+                renderer = GetChunkRenderer();
+                chunkRenderers.Add(position, renderer);
+#if DEBUG
+                renderer.gameObject.name = "Renderer [" + position.x + "," + position.y + "," + position.z + "]";
+#endif
+            }
+
+            MeshFilter filter = renderer.GetComponent<MeshFilter>();
+            Mesh originalMesh = filter.mesh;
+            filter.mesh = mesh;
+            return renderer;
         }
 
         private MeshRenderer GetChunkRenderer()

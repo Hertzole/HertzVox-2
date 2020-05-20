@@ -55,15 +55,22 @@ namespace Hertzole.HertzVox
 
                             int3 chunkPosition = new int3(x * chunkSize, y * chunkSize, z * chunkSize);
 
-                            if (renderChunks.ContainsKey(chunkPosition))
-                            {
-                                continue;
-                            }
-
                             bool shouldRender = false;
                             if (x != xMin && z != zMin && x != xMax - 1 && z != zMax - 1)
                             {
                                 shouldRender = true;
+                            }
+
+                            if (renderChunks.ContainsKey(chunkPosition))
+                            {
+                                if (shouldRender)
+                                {
+                                    ChunkData data = renderChunks[chunkPosition];
+                                    data.render = shouldRender;
+                                    renderChunks[chunkPosition] = data;
+                                }
+
+                                continue;
                             }
 
                             float priority = math.distancesq(chunkPosition, targetPosition);

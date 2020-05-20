@@ -17,6 +17,7 @@ namespace Hertzole.HertzVox
         public bool changed;
         public bool render;
 
+        private bool hasRangedData = false;
         private bool disposed = false;
 
         public bool NeedsTerrain { get; set; }
@@ -40,6 +41,8 @@ namespace Hertzole.HertzVox
         private NativeList<float3> colliderVertices;
         private NativeList<int> colliderIndicies;
         private NativeList<float3> colliderNormals;
+
+        private SetRangedData rangedData;
 
         public Mesh mesh;
 
@@ -193,6 +196,11 @@ namespace Hertzole.HertzVox
 
             GeneratingTerrain = false;
             HasTerrain = true;
+
+            if (hasRangedData)
+            {
+                SetRangeRaw(rangedData.from, rangedData.to, rangedData.block);
+            }
         }
 
         public Mesh CompleteMeshUpdate(Mesh mesh)
@@ -349,15 +357,25 @@ namespace Hertzole.HertzVox
 
         public void SetRangeRaw(int3 from, int3 to, Block block)
         {
-            for (int x = from.x; x <= to.x; x++)
+            if (HasTerrain)
             {
-                for (int y = from.y; y <= to.y; y++)
+                VoxLogger.Log("Chunk : SetRangeRaw with terrain");
+                for (int x = from.x; x <= to.x; x++)
                 {
-                    for (int z = from.z; z <= to.z; z++)
+                    for (int y = from.y; y <= to.y; y++)
                     {
-                        SetBlockRaw(x, y, z, block);
+                        for (int z = from.z; z <= to.z; z++)
+                        {
+                            SetBlockRaw(x, y, z, block);
+                        }
                     }
                 }
+            }
+            else
+            {
+                VoxLogger.Log("Chunk : SetRangeRaw without terrain");
+                rangedData = new SetRangedData() { from = from, to = to, block = block };
+                hasRangedData = true;
             }
         }
 
