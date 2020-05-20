@@ -113,5 +113,9 @@ This project is the "successor" to my previous voxel engine that got a bit ineff
 **What about [Voxelmetric](https://github.com/Hertzole/Voxelmetric)?**  
 This project focuses much more on usability and performance and I've spent a lot of time making sure usability is as easy as possible and keeping performance up. Voxelmetric is also quite easy to use and has a lot of performance with the number of features it provides, but it is a bit harder *for me* to work with. So I decided to roll my own solution. Voxelmetric, on the other hand, supports more block types and actual threading.
 
+## ❤ Credits
+- [BlueRaja](https://github.com/BlueRaja) for [High speed prioritiy queue for C#](https://github.com/BlueRaja/High-Speed-Priority-Queue-for-C-Sharp)
+- [bbtarzan12](https://github.com/bbtarzan12) for the chunk shader from their [procedural voxel terrain](https://github.com/bbtarzan12/Unity-Procedural-Voxel-Terrain)
+
 ## 📃 License
 The project is licensed under MIT. Basically, do whatever you want but I'm not liable for anything.
