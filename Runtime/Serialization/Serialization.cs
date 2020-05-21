@@ -171,14 +171,13 @@ namespace Hertzole.HertzVox
 
         public static void SaveAllChunksToLocation(VoxelWorld world, string location)
         {
-            List<Chunk> chunks = LoadAllChunks(world, false);
+            List<Chunk> chunks = LoadAllChunks(world, true);
             string originalPath = SaveLocation;
             SaveLocation = location;
 
             for (int i = 0; i < chunks.Count; i++)
             {
                 SaveChunk(chunks[i], false);
-
                 chunks[i].Dispose();
             }
 
@@ -222,7 +221,7 @@ namespace Hertzole.HertzVox
 
             for (int i = 0; i < chunks.Count; i++)
             {
-                chunks[i].Dispose();
+                chunks[i].Dispose(true);
             }
 
             return data;
@@ -276,7 +275,8 @@ namespace Hertzole.HertzVox
                 for (int i = 0; i < tempChunks.Length; i++)
                 {
                     Chunk chunk = new Chunk(world, int3.zero, new ChunkBlocks(Chunk.CHUNK_SIZE));
-                    if (!ignoreEmptyChunks)
+                    DeserializeChunk(chunk, tempChunks[i]);
+                    if (ignoreEmptyChunks)
                     {
                         NativeArray<int> blocks = chunk.GetAllBlocks(Allocator.Temp);
                         bool empty = true;
@@ -297,10 +297,7 @@ namespace Hertzole.HertzVox
                         }
                     }
 
-                    if (DeserializeChunk(chunk, tempChunks[i]))
-                    {
-                        chunks.Add(chunk);
-                    }
+                    chunks.Add(chunk);
                 }
             }
 
