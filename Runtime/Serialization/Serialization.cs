@@ -293,6 +293,8 @@ namespace Hertzole.HertzVox
 
                         if (empty)
                         {
+                            // Need to dispose the chunk here to avoid memory leak.
+                            chunk.Dispose();
                             continue;
                         }
                     }
