@@ -474,7 +474,6 @@ namespace Hertzole.HertzVox
 
                     if (!chunk.RequestedRemoval && chunk.render)
                     {
-                        //AddToQueue(renderQueue, data.position, data.priority);
                         TryToQueueChunkRender(chunk, data.priority);
                     }
 
@@ -559,8 +558,7 @@ namespace Hertzole.HertzVox
 #endif
                     }
 
-                    Mesh originalMesh = collider.sharedMesh;
-                    collider.sharedMesh = chunk.CompleteColliderMeshUpdate(originalMesh);
+                    collider.sharedMesh = chunk.CompleteColliderMeshUpdate(collider.sharedMesh);
 
                     jobsToRemove.Add(jobs.Keys[i]);
                 }
@@ -635,9 +633,7 @@ namespace Hertzole.HertzVox
 
         private Chunk CreateChunk(int3 position)
         {
-            Chunk chunk = new Chunk(this, position, new ChunkBlocks(Chunk.CHUNK_SIZE));
-
-            return chunk;
+            return new Chunk(this, position, new ChunkBlocks(Chunk.CHUNK_SIZE));
         }
 
         private void DestroyChunk(Chunk chunk)
@@ -678,7 +674,6 @@ namespace Hertzole.HertzVox
             }
 
             MeshFilter filter = renderer.GetComponent<MeshFilter>();
-            Mesh originalMesh = filter.mesh;
             filter.mesh = mesh;
             return renderer;
         }
